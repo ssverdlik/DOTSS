@@ -19,7 +19,7 @@
   h1 { color: #9eb8ff; font-size: 32px; letter-spacing: 4px; text-align: center; margin-bottom: 20px; }
   h2 { font-size: 16px; color: #9eb8ff; margin-bottom: 12px; }
   h3 { font-size: 12px; color: #8b8b9b; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
-  .panel { background: #17171f; border: 1px solid #262632; border-radius: 10px; padding: 16px; }
+  .panel { background: #17171f; border: 1px solid #262632; border-radius: 10px; padding: 16px; position: relative; }
   input[type=text], input[type=password] {
     width: 100%; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
     border: 1px solid #2a2a38; background: #0f0f15; color: #eee; font-size: 14px;
@@ -62,7 +62,7 @@
 
   #menu-screen { display: none; }
   #menu-screen.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .profile-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .profile-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; align-items: center; }
   .profile-row span:last-child { color: #9eb8ff; font-weight: 600; }
   .elo-big { font-size: 42px; font-weight: 800; color: #ffcc44; text-align: center; margin: 8px 0; }
 
@@ -71,8 +71,8 @@
   .lb-row:last-child { border-bottom: none; }
   .lb-pos { color: #8b8b9b; width: 22px; }
   .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-dts { color: #ffcc44; font-size: 11px; font-weight: 600; }
-  .lb-games { color: #9ec0ff; font-size: 11px; font-weight: 600; margin-left: 4px; }
+  .lb-dts { color: #ffcc44; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 2px; }
+  .lb-games { color: #9ec0ff; font-size: 11px; font-weight: 600; margin-left: 4px; display: flex; align-items: center; gap: 2px; }
   .lb-you { background: #1a2a4a; border-radius: 4px; padding: 5px 4px; }
 
   .tourn-item { display: flex; align-items: center; gap: 8px; padding: 8px;
@@ -88,14 +88,54 @@
     display: grid;
     grid-template-columns: 4fr 3fr 3fr;
     gap: 16px;
+    height: calc(100vh - 32px); /* Ограничиваем высоту экрана */
+  }
+  #games-screen .panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   #games-screen .panel h2 {
     text-align: center;
     margin-bottom: 16px;
+    flex-shrink: 0;
   }
   #games-screen .panel p {
     text-align: center;
+    flex-shrink: 0;
   }
+
+  /* Скролл-контейнеры */
+  .table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a38 #0f0f15;
+  }
+  .table-wrapper::-webkit-scrollbar { width: 6px; }
+  .table-wrapper::-webkit-scrollbar-track { background: #0f0f15; }
+  .table-wrapper::-webkit-scrollbar-thumb { background: #2a2a38; border-radius: 3px; }
+
+  /* Прикрепленный рейтинг */
+  .lb-pinned {
+    flex-shrink: 0;
+    border-top: 2px dashed #2a2a38;
+    margin-top: 4px;
+    padding-top: 4px;
+    background: #17171f;
+    display: none;
+  }
+  .lb-pinned.show { display: block; }
+  .lb-pinned .lb-gap {
+    text-align: center;
+    color: #8b8b9b;
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin: 4px 0;
+    font-weight: bold;
+  }
+
   .games-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .games-table th { text-align: left; color: #8b8b9b; padding: 4px 2px;
                      border-bottom: 1px solid #262632; font-weight: 600; font-size: 10px;
@@ -112,12 +152,13 @@
     font-size: 10px; font-weight: 700; background: #3366ee; color: #fff;
   }
   .game-name { font-size: 11px; color: #8b8b9b; margin-top: 2px; display: block; }
+  .game-fee { font-size: 10px; color: #ffcc44; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
   .field-pct { color: #9eb8ff; font-weight: 600; font-variant-numeric: tabular-nums; }
   .games-empty { color: #8b8b9b; font-size: 12px; text-align: center; padding: 20px; }
 
   .games-header {
     display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-    justify-content: center;
+    justify-content: center; flex-shrink: 0;
   }
   .games-header h2 { margin: 0; }
 
@@ -139,7 +180,8 @@
   .ai-checkbox .ai-label { font-size: 13px; }
   .ai-checkbox .ai-desc { color: #8b8b9b; font-size: 11px; }
 
-  #lobby-screen:not(.active) { display: none; }
+  #lobby-screen { display: none; }
+  #lobby-screen.active { display: block; }
   #lobby-screen.active .panel { max-width: 500px; margin: 80px auto 0; }
   .lobby-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .lobby-game-info {
@@ -147,7 +189,7 @@
     font-size: 12px; color: #8b8b9b; margin-bottom: 12px;
   }
 
-  /* ============ PRELOADER ============ */
+  /* ============ PRELOADER & LOGO ============ */
   #game-preloader {
     display: none;
     position: fixed;
@@ -161,11 +203,12 @@
   .preloader-box {
     display: flex; flex-direction: column; align-items: center; gap: 28px;
   }
-  .preloader-box h1 {
-    font-size: 56px; letter-spacing: 12px;
-    color: #9eb8ff; text-shadow: 0 0 20px rgba(80,120,255,.5);
-    margin: 0;
-  }
+
+  .custom-logo { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding-bottom: 20px; width: 200px; }
+  .logo-letters { display: flex; align-items: baseline; color: #9eb8ff; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-shadow: 0 0 20px rgba(80,120,255,.5); letter-spacing: 4px; z-index: 2; }
+  .logo-line-h { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #9eb8ff; box-shadow: 0 0 10px rgba(80,120,255,.5); z-index: 1; }
+  .logo-line-diag { position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #9eb8ff; transform-origin: bottom left; transform: rotate(-25deg); opacity: 0.7; z-index: 1; }
+
   .preloader-spinner {
     width: 64px; height: 64px;
     border: 4px solid #1e1e28;
@@ -177,6 +220,8 @@
     color: #6a6a7a; font-size: 13px; letter-spacing: 2px;
     text-transform: uppercase;
   }
+
+  .dts-icon { display: inline-block; vertical-align: middle; }
 
   /* ============ GAME ============ */
   #game-screen {
@@ -205,7 +250,6 @@
   }
   #canvas-container canvas { display: block; cursor: crosshair; }
 
-  /* Field corner overlays */
   .field-corner {
     position: absolute;
     top: 12px;
@@ -220,6 +264,9 @@
     font-variant-numeric: tabular-nums;
     pointer-events: none;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .field-corner.left { left: 12px; color: #ffcc44; }
   .field-corner.right { right: 12px; color: #55ff55; }
@@ -385,7 +432,7 @@
   .player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .player-count { color: #9eb8ff; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 11px; }
   .player-dts { color: #ffcc44; font-weight: 600; font-size: 10px;
-                font-variant-numeric: tabular-nums; }
+                font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 2px; }
   .action-btn { width: 100%; padding: 8px 12px; border-radius: 8px; margin-top: 6px;
                 border: 1px solid #2a2a38; background: #1e1e28; color: #e6e6e6;
                 cursor: pointer; text-align: left; font-size: 12px; }
@@ -430,6 +477,27 @@
     background: #0f0f15; padding: 1px 6px; border-radius: 4px;
     font-family: 'Consolas', monospace; font-size: 12px; color: #ffcc44;
   }
+
+  input[type=range] {
+    width: 100%;
+    margin: 10px 0;
+    -webkit-appearance: none;
+    background: transparent;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px; width: 16px;
+    border-radius: 50%;
+    background: #4477ff;
+    cursor: pointer;
+    margin-top: -6px;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 4px;
+    cursor: pointer;
+    background: #2a2a38;
+    border-radius: 2px;
+  }
 </style>
 </head>
 <body>
@@ -437,7 +505,17 @@
 <!-- PRELOADER -->
 <div id="game-preloader">
   <div class="preloader-box">
-    <h1>DOTSs</h1>
+    <div class="custom-logo">
+      <div class="logo-letters">
+        <span style="font-size: 52px;">D</span>
+        <span style="font-size: 38px;">O</span>
+        <span style="font-size: 28px;">T</span>
+        <span style="font-size: 20px;">S</span>
+        <span style="font-size: 14px;">S</span>
+      </div>
+      <div class="logo-line-h"></div>
+      <div class="logo-line-diag"></div>
+    </div>
     <div class="preloader-spinner"></div>
     <div class="preloader-text">Загрузка игры...</div>
   </div>
@@ -483,39 +561,49 @@
 </div>
 
 <div id="games-screen" class="screen">
-  <div class="panel" style="position: relative;">
-    <button class="ghost" id="btn-help" style="font-size:10px;
-    position: absolute; top: 16px; left: 16px; z-index: 10;">❓ КАК ИГРАТЬ ❓</button>
+  <div class="panel">
+    <button class="ghost" id="btn-help" style="font-size:10px; position: absolute; top: 16px; left: 16px; z-index: 10;">❓ КАК ИГРАТЬ ❓</button>
     <div class="games-header">
       <h2>Активные игры</h2>
     </div>
-    <span id="create-btn-wrapper" style="display: block;">
+    <span id="create-btn-wrapper" style="display: block; flex-shrink: 0;">
       <button class="primary" id="btn-create-game" style="margin-bottom:14px;">+ Создать игру</button>
     </span>
-    <table class="games-table">
-      <thead><tr>
-        <th>Игра</th><th>Игр.</th><th>Статус</th><th>Поле</th><th></th>
-      </tr></thead>
-      <tbody id="active-games-body">
-        <tr><td colspan="5" class="games-empty">Нет активных игр</td></tr>
-      </tbody>
-    </table>
+    <div class="table-wrapper">
+      <table class="games-table">
+        <thead><tr>
+          <th>Игра</th><th>Игр.</th><th>Статус</th><th>Поле</th><th></th>
+        </tr></thead>
+        <tbody id="active-games-body">
+          <tr><td colspan="5" class="games-empty">Нет активных игр</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <div class="panel">
     <h2>История игр</h2>
-    <table class="games-table">
-      <thead><tr><th>Размер</th><th>Игр.</th><th>Победитель</th><th>Окончание</th></tr></thead>
-      <tbody id="history-games-body">
-        <tr><td colspan="4" class="games-empty">Нет завершённых игр</td></tr>
-      </tbody>
-    </table>
+    <div class="table-wrapper">
+      <table class="games-table">
+        <thead><tr><th>Размер</th><th>Игр.</th><th>Туры</th><th>Победитель</th><th>Окончание</th></tr></thead>
+        <tbody id="history-games-body">
+          <tr><td colspan="5" class="games-empty">Нет завершённых игр</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <div class="panel">
     <h2>Глобальный рейтинг</h2>
     <p style="color:#8b8b9b;font-size:11px;margin-bottom:10px;">
       Топ-20 по DTs
     </p>
-    <div id="leaderboard-games"></div>
+    <div class="table-wrapper" id="leaderboard-container">
+      <div id="leaderboard-games"></div>
+    </div>
+    <!-- Блок для прикрепления своей позиции, если ты не в топе -->
+    <div class="lb-pinned" id="my-rank-pinned">
+      <div class="lb-gap">****</div>
+      <div id="my-rank-row"></div>
+    </div>
   </div>
 </div>
 
@@ -535,7 +623,13 @@
 
 <div id="game-screen" class="screen">
   <div id="canvas-container">
-    <div class="field-corner left" id="field-coins">💰 <span id="coins-val">0</span></div>
+    <div class="field-corner left" id="field-coins">
+      <svg class="dts-icon" style="width:18px;height:18px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg>
+      <span id="coins-val">0</span>
+    </div>
+    <div class="field-corner left" id="field-prize" style="top: 60px; color: #ffcc44; display: none;">
+      🏆 Приз: <span id="prize-val">0</span> DTs
+    </div>
     <div class="field-corner right" id="field-moves">⚡ <span id="moves-val">3</span></div>
     <div class="field-center">
       <div class="field-turn">
@@ -558,8 +652,9 @@
         <button class="danger" id="btn-surrender">
           🏳️ Сдаться
         </button>
-        <button class="ghost" id="btn-zoom-my" style="width:100%;">
-          🎯 К моим точкам
+        <button class="ghost" id="btn-zoom-my" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <span id="zoom-btn-dot" style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#4477ff; border: 1px solid rgba(255,255,255,0.2);"></span>
+          К моим точкам
         </button>
       </div>
       <button class="icon-btn" id="btn-sound" title="Отключить звук">🔊</button>
@@ -580,6 +675,7 @@
   </div>
 </div>
 
+<!-- Модалки -->
 <div class="modal-bg" id="create-modal">
   <div class="modal">
     <h2>Создать игру</h2>
@@ -602,13 +698,30 @@
         <span class="size-name">XL</span><span class="size-info">100×100 · до 20 игроков</span>
       </label>
     </div>
-    <label class="ai-checkbox">
+
+    <label class="ai-checkbox" style="margin-top: 10px;">
       <input type="checkbox" id="ai-toggle">
       <div>
         <div class="ai-label">🤖 Разрешить ИИ-игрока</div>
         <div class="ai-desc">Позволит начать игру со вторым игроком-ботом</div>
       </div>
     </label>
+
+    <label class="ai-checkbox" style="margin-top: 10px;">
+      <input type="checkbox" id="fee-toggle">
+      <div>
+        <div class="ai-label">💰 Игра с призовым фондом</div>
+        <div class="ai-desc">Выберите ставку (не более 50% от баланса)</div>
+      </div>
+    </label>
+    <div id="fee-container" style="display:none; margin-top: 8px;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+        <span>Ставка:</span>
+        <span><b id="fee-value">0</b> DTs</span>
+      </div>
+      <input type="range" id="fee-range" min="1" max="100" value="1">
+    </div>
+
     <div class="err" id="create-err"></div>
     <button class="primary" id="btn-confirm-create" style="margin-top:14px;">Создать</button>
     <button class="ghost" id="btn-cancel-create" style="width:100%;margin-top:8px;">Отмена</button>
@@ -617,7 +730,7 @@
 
 <div class="modal-bg" id="help-modal">
   <div class="modal modal-wide">
-    <h2>Как играть в DOTS</h2>
+    <h2>Как играть в DOTSs</h2>
 
     <div class="help-section">
       <h3>🎯 Цель</h3>
@@ -625,7 +738,7 @@
       <ul>
         <li>Захвачено 70% занятых клеток</li>
         <li>Все противники уничтожены / сдались</li>
-        <li>Соперник пропустил 3 тура (1v1) или не может ходить</li>
+        <li>Соперник пропустил 5 туров (1v1) или не может ходить</li>
       </ul>
     </div>
 
@@ -664,7 +777,7 @@
     </div>
 
     <div class="help-section">
-      <h3>💰 DTs</h3>
+      <h3><svg class="dts-icon" style="width:18px;height:18px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg> DTs</h3>
       <ul>
         <li>+1 за новую внутреннюю (все 4 соседа свои)</li>
         <li>−1 за усиление</li>
@@ -677,7 +790,7 @@
       <ul>
         <li>Клетки остаются, но заморожены (полупрозрачные)</li>
         <li>Другие могут атаковать и захватывать их</li>
-        <li>Получаешь DTs ×1</li>
+        <li>Получаешь набранные DTs</li>
       </ul>
     </div>
 
@@ -687,13 +800,14 @@
         <li>ЛКМ клик — выбрать / сходить</li>
         <li>ЛКМ + drag — сдвинуть карту</li>
         <li>Колесо — зум</li>
-        <li>🎯 — авто-зум на свои точки</li>
+        <li>Кнопка со своим цветом — авто-зум на свои точки</li>
       </ul>
     </div>
 
     <button class="primary" id="help-close" style="margin-top:8px;">Понятно</button>
   </div>
 </div>
+
 <div class="modal-bg" id="confirm-modal">
   <div class="modal">
     <h2 id="confirm-title">—</h2>
@@ -704,11 +818,25 @@
     </div>
   </div>
 </div>
+
 <div class="modal-bg" id="modal-bg">
   <div class="modal">
     <h2 id="modal-title">—</h2>
     <div id="modal-body"></div>
     <button class="primary" id="modal-close" style="margin-top:16px;">OK</button>
+  </div>
+</div>
+
+<!-- Рекламное окно -->
+<div class="modal-bg" id="ad-modal" style="z-index: 9999;">
+  <div class="modal" style="width: 90vw; height: 90vh; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(15, 15, 21, 0.98); border: 2px solid #4477ff;">
+
+    <!-- МЕСТО ДЛЯ РЕКЛАМЫ ЯНДЕКС: сюда вставить код рекламного блока -->
+    <h2 style="font-size: 36px; color: #9eb8ff; text-align: center; margin-bottom: 20px;">Здесь может быть ваша реклама</h2>
+    <p style="color: #8b8b9b; margin-bottom: 40px;">Реклама помогает нам развивать игру</p>
+    <!-- КОНЕЦ МЕСТА ДЛЯ РЕКЛАМЫ -->
+
+    <button class="primary" id="btn-close-ad" style="width: 200px; margin-top: 20px;">Закрыть</button>
   </div>
 </div>
 
@@ -719,6 +847,8 @@ const CELL = 8;
 const INNER_MASS_THRESHOLD = 2;
 const POWERUP_COST = 1;
 const MAP_MARGIN = 20;
+
+const DTS_SVG = (size = 20) => `<svg class="dts-icon" style="width:${size}px;height:${size}px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg>`;
 
 const state = {
   token: localStorage.getItem('dots_token'),
@@ -732,6 +862,7 @@ const state = {
   muted: localStorage.getItem('dots_muted') === '1',
   warned10Sec: false,
   warned20Pct: false,
+  lastAdTurn: 0,
 };
 
 const $ = id => document.getElementById(id);
@@ -819,6 +950,24 @@ function showModal(title, bodyHtml) {
 }
 $('modal-close').onclick = () => $('modal-bg').classList.remove('show');
 
+/* CUSTOM CONFIRM */
+let confirmCallback = null;
+function customConfirm(title, body, onYes) {
+  $('confirm-title').textContent = title;
+  $('confirm-body').innerHTML = body;
+  confirmCallback = onYes;
+  $('confirm-modal').classList.add('show');
+}
+$('confirm-yes').onclick = () => {
+  $('confirm-modal').classList.remove('show');
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+};
+$('confirm-no').onclick = () => {
+  $('confirm-modal').classList.remove('show');
+  confirmCallback = null;
+};
+
 /* AUTH */
 let authMode = 'login';
 $('tab-login').onclick = () => { authMode = 'login'; $('tab-login').classList.add('active');
@@ -857,13 +1006,16 @@ async function enterMenu() {
 function renderProfile() {
   const m = state.me;
   $('my-elo').textContent = m.elo; $('my-name').textContent = m.username;
-  $('my-dts').textContent = m.global_dts || 0;
+  $('my-dts').innerHTML = DTS_SVG(24) + ' ' + (m.global_dts || 0);
   $('my-wins').textContent = m.games_won; $('my-played').textContent = m.games_played;
 }
 
 async function refreshLeaderboard() {
   try {
-    const rows = await api('/api/leaderboard');
+    const data = await api('/api/leaderboard');
+    const rows = data.top;
+
+    // Рендер списка (топ-20)
     const renderInto = (el) => {
       if (!el) return;
       el.innerHTML = '';
@@ -873,27 +1025,48 @@ async function refreshLeaderboard() {
         if (state.me && r.username === state.me.username) d.classList.add('lb-you');
         d.innerHTML = `<span class="lb-pos">${i + 1}.</span>
           <span class="lb-name">${escape(r.username)}</span>
-          <span class="lb-dts">💰${r.global_dts || 0}</span>
-          <span class="lb-games">🎮${r.games_played || 0}</span>`;
+          <span class="lb-games">🏆${r.games_won || 0}</span>
+          <span class="lb-dts">${DTS_SVG(18)}${r.global_dts || 0}</span>`;
         el.appendChild(d);
       });
     };
     renderInto($('leaderboard'));
     renderInto($('leaderboard-games'));
+
+    // Рендер прикрепленной строки, если мы не в топе
+    const pinnedEl = $('my-rank-pinned');
+    const myRankRowEl = $('my-rank-row');
+
+    if (!data.is_in_top && state.me) {
+        const d = document.createElement('div');
+        d.className = 'lb-row lb-you';
+        d.innerHTML = `<span class="lb-pos">${data.my_rank}.</span>
+          <span class="lb-name">${escape(state.me.username)}</span>
+          <span class="lb-games">🏆${state.me.games_won || 0}</span>
+          <span class="lb-dts">${DTS_SVG(18)}${state.me.global_dts || 0}</span>`;
+        myRankRowEl.innerHTML = '';
+        myRankRowEl.appendChild(d);
+        pinnedEl.classList.add('show');
+    } else {
+        pinnedEl.classList.remove('show');
+    }
+
   } catch (e) { console.error(e); }
 }
+
 $('btn-back-to-games').onclick = () => {
   if (state.gameOver) { showGamesScreen(); return; }
   const me = state.players[state.playerId];
   if (me && me.surrendered) { showGamesScreen(); return; }
-  const confirmed = confirm(
-    'Выйти в лобби?\n\n' +
-    'Ты будешь отмечен как отсутствующий после 3 пропущенных туров.\n' +
-    'Вернуться в игру можно из списка игр — твоё состояние сохранится.'
+
+  customConfirm(
+    'Выйти в лобби?',
+    'Ты будешь отмечен как отсутствующий после 3 пропущенных туров.<br>Вернуться в игру можно из списка игр — твоё состояние сохранится.',
+    () => {
+      if (state.ws) { state.ws.close(); state.ws = null; }
+      showGamesScreen();
+    }
   );
-  if (!confirmed) return;
-  if (state.ws) { state.ws.close(); state.ws = null; }
-  showGamesScreen();
 };
 
 async function showGamesScreen() {
@@ -933,6 +1106,22 @@ function updateCreateButton(activeGames) {
   }
 }
 
+async function deleteGame(gameId) {
+  customConfirm(
+    'Удалить игру?',
+    'Игра будет удалена, а ставка (если есть) вернётся на баланс.',
+    async () => {
+      try {
+        await api(`/api/games/${gameId}/delete/`, { method: 'POST' });
+        refreshGames();
+        state.me = await api('/api/me');
+        renderProfile();
+      } catch (e) { showModal('Ошибка', escape(e.message)); }
+    }
+  );
+}
+window.deleteGame = deleteGame;
+
 function renderActiveGames(games) {
   const tbody = $('active-games-body');
   if (!games.length) {
@@ -958,7 +1147,10 @@ function renderActiveGames(games) {
     const freeSlots = g.max_players - g.players_count;
     let action = '';
     if (isMyGame) {
-      action = `<button class="return-btn" onclick="returnToGame()">🔄 Вернуться в игру</button>`;
+      action = `<div style="display:flex; gap:6px; align-items:center;">
+        <button class="return-btn" onclick="returnToGame()">🔄 Вернуться в игру</button>
+        ${g.players_count === 1 ? `<span style="color:#ff4444; cursor:pointer; font-weight:bold; font-size:16px;" onclick="deleteGame('${g.game_id}')" title="Удалить игру">✖</span>` : ''}
+      </div>`;
     } else if (!myCurrentGame &&
                (g.status === 'waiting' || (g.status === 'playing' && freeSlots > 0))) {
       action = `<button class="ghost" style="padding:5px 10px;font-size:12px;"
@@ -966,9 +1158,16 @@ function renderActiveGames(games) {
     }
 
     const pct = typeof g.occupied_pct === 'number' ? g.occupied_pct : 0;
-    const nameHtml = g.name ? `<span class="game-name">${escape(g.name)}</span>` : '';
+    let nameHtml = g.name ? `<span class="game-name">${escape(g.name)}</span>` : '';
+    let feeHtml = '';
+    if (g.entry_fee > 0) {
+      feeHtml = `<span class="game-fee">${DTS_SVG(14)} Взнос: ${g.entry_fee} / Банк: ${g.prize_pool || 0}</span>`;
+    }
+
     tr.innerHTML = `
-      <td><span class="size-badge">${g.size_code}</span>${nameHtml}</td>
+      <td>
+        <span class="size-badge">${g.size_code}</span>${nameHtml}${feeHtml}
+      </td>
       <td>${g.players_count}/${g.max_players}</td>
       <td>${statusBadge}</td>
       <td><span class="field-pct">${pct.toFixed(0)}%</span></td>
@@ -980,7 +1179,7 @@ function renderActiveGames(games) {
 function renderHistoryGames(games) {
   const tbody = $('history-games-body');
   if (!games.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="games-empty">Нет завершённых игр</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="games-empty">Нет завершённых игр</td></tr>';
     return;
   }
   tbody.innerHTML = '';
@@ -997,6 +1196,7 @@ function renderHistoryGames(games) {
     tr.innerHTML = `
       <td><span class="size-badge">${g.size_code}</span></td>
       <td>${g.players_count}</td>
+      <td style="font-weight:bold; color:#9eb8ff;">${g.turns || 0}</td>
       <td>${g.winner_name ? escape(g.winner_name) : '—'}</td>
       <td style="font-size:11px;color:#8b8b9b;">${date}</td>`;
     tbody.appendChild(tr);
@@ -1040,51 +1240,16 @@ $('btn-help').onclick = () => $('help-modal').classList.add('show');
 $('help-close').onclick = () => $('help-modal').classList.remove('show');
 
 /* SURRENDER */
-/* CUSTOM CONFIRM (Добавляем функцию) */
-let confirmCallback = null;
-function customConfirm(title, body, onYes) {
-  document.getElementById('confirm-title').textContent = title;
-  document.getElementById('confirm-body').innerHTML = body;
-  confirmCallback = onYes;
-  document.getElementById('confirm-modal').classList.add('show');
-}
-document.getElementById('confirm-yes').onclick = () => {
-  document.getElementById('confirm-modal').classList.remove('show');
-  if (confirmCallback) confirmCallback();
-  confirmCallback = null;
-};
-document.getElementById('confirm-no').onclick = () => {
-  document.getElementById('confirm-modal').classList.remove('show');
-  confirmCallback = null;
-};
-
-/* SURRENDER (Обновленный обработчик) */
 $('btn-surrender').onclick = () => {
   if (state.gameOver) return;
   const me = state.players[state.playerId];
   if (!me || me.surrendered) return;
   customConfirm(
     'Сдаться?',
-    'Клетки останутся на поле (полупрозрачные), другие смогут их захватить.<br>Ты получишь DTs ×1.',
+    'Клетки останутся на поле (полупрозрачные), другие смогут их захватить.<br>Ты получишь набранные DTs.',
     () => {
       playSound('surrender');
       sendAction({ action: 'surrender' });
-    }
-  );
-};
-
-/* BACK TO GAMES (Тут тоже был confirm, меняем) */
-$('btn-back-to-games').onclick = () => {
-  if (state.gameOver) { showGamesScreen(); return; }
-  const me = state.players[state.playerId];
-  if (me && me.surrendered) { showGamesScreen(); return; }
-
-  customConfirm(
-    'Выйти в лобби?',
-    'Ты будешь отмечен как отсутствующий после 3 пропущенных туров.<br>Вернуться в игру можно из списка игр — твоё состояние сохранится.',
-    () => {
-      if (state.ws) { state.ws.close(); state.ws = null; }
-      showGamesScreen();
     }
   );
 };
@@ -1121,9 +1286,27 @@ document.querySelectorAll('.size-option').forEach(opt => {
     selectedSize = opt.dataset.size;
   });
 });
+
+$('fee-toggle').onchange = (e) => {
+  $('fee-container').style.display = e.target.checked ? 'block' : 'none';
+  if (e.target.checked) {
+    const maxFee = Math.floor((state.me?.global_dts || 0) * 0.5);
+    const range = $('fee-range');
+    range.min = 1;
+    range.max = Math.max(1, maxFee);
+    range.value = Math.min(maxFee, 10);
+    $('fee-value').textContent = range.value;
+  }
+};
+$('fee-range').oninput = (e) => {
+  $('fee-value').textContent = e.target.value;
+};
+
 $('btn-create-game').onclick = () => {
   $('create-err').textContent = '';
   $('ai-toggle').checked = false;
+  $('fee-toggle').checked = false;
+  $('fee-container').style.display = 'none';
   $('game-name-input').value = '';
   $('create-modal').classList.add('show');
 };
@@ -1132,10 +1315,12 @@ $('btn-confirm-create').onclick = async () => {
   $('create-err').textContent = '';
   const allowAi = $('ai-toggle').checked;
   const name = $('game-name-input').value.trim() || null;
+  const entryFee = $('fee-toggle').checked ? parseInt($('fee-range').value) : 0;
+
   try {
     await api('/api/games/create', {
       method: 'POST',
-      body: JSON.stringify({ size: selectedSize, allow_ai: allowAi, name }),
+      body: JSON.stringify({ size: selectedSize, allow_ai: allowAi, name, entry_fee: entryFee }),
     });
     $('create-modal').classList.remove('show');
     if (state.ws) { state.ws.close(); state.ws = null; }
@@ -1338,10 +1523,8 @@ function drawGridLines(force = false) {
   lastGridZoom = zoom;
 
   gridLayer.removeChildren();
-  // Порог — только высокий зум
   if (zoom < 2.5) return;
 
-  // Деликатная сетка: alpha до 0.10, тонкая линия
   const alpha = Math.min(0.10, Math.max(0, (zoom - 2.5) * 0.035));
   if (alpha < 0.005) return;
   const lw = Math.min(0.4, 0.12 + zoom * 0.02);
@@ -1401,10 +1584,10 @@ function zoomToMyDots(animate = true) {
   const xs = myCells.map(c => c.x), ys = myCells.map(c => c.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const pad = 8;
+  const pad = 4;
   const w = (maxX - minX + pad * 2) * CELL;
   const h = (maxY - minY + pad * 2) * CELL;
-  const zoom = Math.max(0.5, Math.min(6, Math.min(vw / w, vh / h)));
+  const zoom = Math.max(0.5, Math.min(8, Math.min(vw / w, vh / h)));
   const cx = (minX + maxX + 1) / 2 * CELL;
   const cy = (minY + maxY + 1) / 2 * CELL;
   const targetX = vw / 2 - cx * zoom;
@@ -1482,29 +1665,31 @@ function clearArrow() {
 }
 function drawAttackArrow(fromX, fromY, toX, toY) {
   clearArrow(); if (!arrowLayer) return;
+  const container = new PIXI.Container();
+  arrowContainer = container;
+  arrowLayer.addChild(container);
   const ax = fromX * CELL + CELL / 2, ay = fromY * CELL + CELL / 2;
   const bx = toX * CELL + CELL / 2, by = toY * CELL + CELL / 2;
   if (ax === bx && ay === by) return;
-  arrowContainer = new PIXI.Container(); arrowLayer.addChild(arrowContainer);
   const line = new PIXI.Graphics();
   line.lineStyle(1, 0xff5544, 0.55); line.moveTo(ax, ay); line.lineTo(bx, by);
-  arrowContainer.addChild(line);
+  container.addChild(line);
   const angle = Math.atan2(by - ay, bx - ax);
   const headG = new PIXI.Graphics();
   headG.beginFill(0xff5544, 0.95); headG.moveTo(bx, by);
   headG.lineTo(bx - 4 * Math.cos(angle - 0.4), by - 4 * Math.sin(angle - 0.4));
   headG.lineTo(bx - 4 * Math.cos(angle + 0.4), by - 4 * Math.sin(angle + 0.4));
-  headG.closePath(); headG.endFill(); arrowContainer.addChild(headG);
+  headG.closePath(); headG.endFill(); container.addChild(headG);
   const pulses = [];
   for (let i = 0; i < 3; i++) {
     const p = new PIXI.Graphics();
     p.beginFill(0xffaa88, 1); p.drawCircle(0, 0, 1.5); p.endFill();
     p.__offset = i / 3; p.x = ax; p.y = ay;
-    arrowContainer.addChild(p); pulses.push(p);
+    container.addChild(p); pulses.push(p);
   }
   const startT = performance.now();
   const tick = () => {
-    if (!arrowContainer || arrowContainer.destroyed) return;
+    if (arrowContainer !== container || container.destroyed) return;
     const elapsed = (performance.now() - startT) / 1000;
     const cycle = (elapsed * 0.9) % 1;
     for (const p of pulses) {
@@ -1584,7 +1769,7 @@ function makeBadge(x, y, owner, strength) {
   const alpha = dim ? 0.5 : 0.9;
 
   const r_vis = 0.42 * CELL * 0.85;
-  const s = 0.8; // Коэффициент уменьшения щитка (было 1.0)
+  const s = 0.8;
 
   const tw = 0.60 * r_vis * s;
   const th = 0.80 * r_vis * s;
@@ -1592,8 +1777,6 @@ function makeBadge(x, y, owner, strength) {
 
   const shield = new PIXI.Graphics();
   shield.beginFill(0x000000, alpha * 0.85);
-
-  // 1. Рисуем контур щита
   shield.lineStyle(0.5, colorNum, alpha);
   shield.moveTo(-tw, -th);
   shield.lineTo(tw, -th);
@@ -1602,29 +1785,26 @@ function makeBadge(x, y, owner, strength) {
   shield.quadraticCurveTo(-tw, bh * 0.6, -tw, 0);
   shield.closePath();
 
-  // 2. Рисуем кружок вокруг цифры
-  const cy = 0.05 * r_vis;       // Центр кружка по Y
-  const r_circ = 0.45 * r_vis;   // Радиус кружка
-  shield.lineStyle(0.4, colorNum, alpha); // Используем цвет игрока
+  const cy = 0.05 * r_vis;
+  const r_circ = 0.45 * r_vis;
+  shield.lineStyle(0.4, colorNum, alpha);
   shield.drawCircle(0, cy, r_circ);
 
   shield.endFill();
   container.addChild(shield);
 
-  // 3. Текст (цифра)
   const text = new PIXI.Text(String(strength), {
     fontFamily: 'Arial, sans-serif', fontSize: 22, fontWeight: 'bold',
     fill: colorNum, align: 'center',
   });
   text.anchor.set(0.5);
-  text.scale.set(0.09); // Чуть уменьшили цифру под новый кружок
-  text.y = cy;          // Выравниваем ровно по центру кружка
+  text.scale.set(0.09);
+  text.y = cy;
   container.addChild(text);
 
   if (player.surrendered) container.alpha = 0.4;
   return container;
 }
-
 function updateSprite(key, cell) {
   const old = state.sprites.get(key);
   const [x, y] = key.split(',').map(Number);
@@ -1721,16 +1901,16 @@ function buildContour(cells) {
       if (edges[cur].x1 === contour[0][0] && edges[cur].y1 === contour[0][1]) break;
     }
     if (contour.length < 3) continue;
-    // Убираем дублирующуюся первую точку в конце
+
     if (contour.length > 1 && contour[0][0] === contour[contour.length - 1][0] && contour[0][1] === contour[contour.length - 1][1]) {
       contour.pop();
     }
+
     contours.push(contour.map(([cx, cy]) => [cx * CELL, cy * CELL]));
   }
   return contours;
 }
 function buildSmoothPath(g, pts) {
-  // Защита от дублирования первой и последней точки
   if (pts.length > 1) {
     const first = pts[0];
     const last = pts[pts.length - 1];
@@ -1750,7 +1930,6 @@ function buildSmoothPath(g, pts) {
   g.closePath();
 }
 function drawInnerMass(contourPts, colorNum, dim, surrendered) {
-  // Плотнее — менее прозрачная заливка
   const fillAlpha = dim ? 0.20 : 0.52;
   const outlineAlpha = dim ? 0.18 : 0.48;
 
@@ -1834,7 +2013,7 @@ function renderSelection() {
   const baseColor = parseInt(player.color.slice(1), 16);
   const lightColor = lightenPixi(baseColor, 0.4);
   const tick = () => {
-    if (!selectionGfx || selectionGfx.destroyed) return;
+    if (selectionGfx !== g || g.destroyed) return;
     const elapsed = (performance.now() - selectionStart) / 1000;
     const pulse = 0.5 + 0.5 * Math.sin(elapsed * Math.PI * 0.75);
     g.clear();
@@ -1976,27 +2155,23 @@ function checkFieldThresholds() {
 
 /* PRELOADER + state */
 async function enterGameWithPreloader(msg) {
-  // Показать прелоадер
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.body.classList.remove('in-game');
   $('game-preloader').classList.add('active');
 
-  // Инициализация PIXI в фоне
   await initPixi();
   setReconnectOverlay(false);
 
-  // Синхронизация
   if (msg.game_id && msg.game_id !== state.gameId) {
     state.gameId = msg.game_id;
     const logEl = $('log');
     if (logEl) logEl.innerHTML = '';
+    state.lastAdTurn = 0;
   }
   syncFull(msg);
 
-  // Пауза 5 сек
   await new Promise(r => setTimeout(r, 2500));
 
-  // Переключить в игру
   $('game-preloader').classList.remove('active');
   showScreen('game-screen');
 }
@@ -2034,8 +2209,14 @@ function syncFull(msg) {
   redrawMasses(); renderAll();
   resizePixi();
   setTimeout(() => zoomToMyDots(true), 50);
-  // Проверить 20%
   setTimeout(checkFieldThresholds, 100);
+
+  if (msg.prize_pool > 0) {
+    $('field-prize').style.display = 'flex';
+    $('prize-val').innerHTML = DTS_SVG(20) + ' ' + msg.prize_pool;
+  } else {
+    $('field-prize').style.display = 'none';
+  }
 }
 
 function applyChanges(msg) {
@@ -2065,7 +2246,6 @@ function applyChanges(msg) {
   for (const [x, y] of touched) refreshAround(x, y);
   if (msg.actor && msg.players[msg.actor]) refreshPlayerCells(msg.actor);
 
-  // Амеба — ТОЛЬКО по данным сервера
   if (msg.action_type === 'expand' &&
       msg.action_from && msg.action_to) {
     const [fx, fy] = msg.action_from;
@@ -2089,8 +2269,8 @@ function applyChanges(msg) {
     for (const [pid, amount] of Object.entries(msg.dts_gained)) {
       const p = msg.players[pid];
       if (p) {
-        if (pid === state.playerId) { playSound('income'); log(`💰 +${amount} DTs`); }
-        else log(`💰 ${p.name} +${amount} DTs`);
+        if (pid === state.playerId) { playSound('income'); log(`+${amount} DTs`); }
+        else log(`${p.name} +${amount} DTs`);
       }
     }
   }
@@ -2212,6 +2392,11 @@ function burstParticles(x, y, colorHex) {
 function renderAll() {
   renderPlayers(); renderActions(); renderSelection(); renderScoreboard();
   renderFieldOverlay();
+
+  const me = state.players[state.playerId];
+  if (me && $('zoom-btn-dot')) {
+    $('zoom-btn-dot').style.background = me.color;
+  }
 }
 
 function renderFieldOverlay() {
@@ -2268,7 +2453,7 @@ function renderPlayers() {
       <div class="player-dot" style="background:${p.color}"></div>
       <div class="player-name">${escape(p.name)}${you}${aiBadge}${surrBadge}${absentBadge}${dcInfo}${missedInfo}</div>
       <div class="player-count">${p.count}</div>
-      <div class="player-dts">💰${p.dts || 0}</div>`;
+      <div class="player-dts">${DTS_SVG(16)}${p.dts || 0}</div>`;
     el.appendChild(row);
   }
 }
@@ -2332,6 +2517,9 @@ function handleCellClick(x, y) {
   }
   const cell = state.grid.get(`${x},${y}`);
   if (cell && cell.owner === state.playerId) {
+    if (cell.acted) {
+       state.selected = null; clearTargets(); renderAll(); return;
+    }
     playSound('select');
     state.selected = [x, y]; updateTargets(); renderAll(); return;
   }
@@ -2347,13 +2535,27 @@ function connectWS() {
   const ws = new WebSocket(`${proto}://${location.host}/ws?token=${state.token}`);
   state.ws = ws;
   state.reconnectPending = false;
+
+  // --- ИСПРАВЛЕНИЕ: Очередь сообщений ---
+  let messageQueue = Promise.resolve();
+
   ws.onopen = () => {
     state.reconnectAttempts = 0;
     state.reconnectPending = false;
     setReconnectOverlay(false);
     ws.send(JSON.stringify({ type: 'join' }));
   };
-  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      // Добавляем обработку в очередь, чтобы избежать гонки данных
+      messageQueue = messageQueue.then(() => handleMessage(msg)).catch(err => console.error(err));
+    } catch (err) {
+      console.error("Failed to parse WS message", err);
+    }
+  };
+
   ws.onclose = () => {
     if (state.gameOver) return;
     if (state.ws !== ws) return;
@@ -2417,7 +2619,7 @@ async function handleMessage(msg) {
         showModal('Ты сдался',
           'Игра продолжается без тебя.<br><br>' +
           'Твои клетки остались на поле (полупрозрачные), другие могут их захватить.<br>' +
-          'Твои DTs будут зачислены в глобальный баланс ×1.');
+          'Твои DTs будут зачислены в глобальный баланс.');
         state.selected = null;
         clearTargets();
       }
@@ -2435,6 +2637,11 @@ async function handleMessage(msg) {
       redrawMasses();
       log(`— Тур ${msg.turn} —`);
       renderAll();
+
+      if (msg.turn > 0 && msg.turn % 20 === 0 && state.lastAdTurn !== msg.turn) {
+        state.lastAdTurn = msg.turn;
+        $('ad-modal').classList.add('show');
+      }
       break;
     case 'player_disconnected':
       state.disconnected[msg.player_id] = Date.now();
@@ -2483,6 +2690,13 @@ async function handleMessage(msg) {
     case 'error':
       playSound('error');
       log(`⚠ ${msg.message}`);
+      if (msg.message === 'Не твоя точка') {
+        state.selected = null;
+        clearTargets();
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: 'join' }));
+        }
+      }
       break;
   }
 }
@@ -2492,10 +2706,14 @@ function renderLobby(players, gameInfo) {
   const infoEl = $('lobby-game-info');
   if (gameInfo) {
     const nameHtml = gameInfo.name ? `<b>${escape(gameInfo.name)}</b> · ` : '';
+    let feeHtml = '';
+    if (gameInfo.entry_fee > 0) {
+      feeHtml = ` · <span style="color:#ffcc44;">🏆 Призовой фонд: ${gameInfo.prize_pool} DTs</span>`;
+    }
     infoEl.innerHTML = `${nameHtml}Размер: <b>${gameInfo.size_code}</b>
       (${gameInfo.map_size}×${gameInfo.map_size}) ·
       Макс. игроков: <b>${gameInfo.max_players}</b> ·
-      AI: ${gameInfo.allow_ai ? '✅' : '❌'}`;
+      AI: ${gameInfo.allow_ai ? '✅' : '❌'}${feeHtml}`;
   }
   const el = $('lobby-players'); el.innerHTML = '';
   for (const pid in players) {
@@ -2571,6 +2789,8 @@ $('modal-close').addEventListener('click', () => {
     enterMenu();
   }
 });
+
+$('btn-close-ad').onclick = () => $('ad-modal').classList.remove('show');
 
 (async () => {
   if (state.token) {

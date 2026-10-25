@@ -14,4 +14,5 @@ urlpatterns = [
     path('tournaments', views.api_tournaments),
     path('tournaments/<int:tid>', views.api_tournament_detail),
     path('tournaments/<int:tid>/join', views.api_join_tournament),
+    path('games/<str:game_id>/delete/', views.api_delete_game, name='api_delete_game'),
 ]

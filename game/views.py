@@ -7,7 +7,7 @@ from django.db import IntegrityError
 from django.db.models import Count
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-
+from django.db.models import Q
 from . import auth
 from .models import (Match, Tournament, TournamentMatch,
                      TournamentParticipant, User)
@@ -100,16 +100,33 @@ def api_me(request):
     })
 
 
+from django.db.models import Q
+
+
 @require_auth
 def api_leaderboard(request):
     users = User.objects.order_by('-global_dts', '-games_played')[:20]
-    return JsonResponse([
+    result = [
         {'username': u.username, 'elo': u.elo,
          'global_dts': u.global_dts,
          'games_played': u.games_played,
          'games_won': u.games_won}
         for u in users
-    ], safe=False)
+    ]
+
+    user = request.user_obj
+    # Вычисляем реальную позицию игрока в глобальном рейтинге
+    my_rank = User.objects.filter(
+        Q(global_dts__gt=user.global_dts) |
+        Q(global_dts=user.global_dts, games_played__gt=user.games_played) |
+        Q(global_dts=user.global_dts, games_played=user.games_played, id__lt=user.id)
+    ).count() + 1
+
+    return JsonResponse({
+        'top': result,
+        'my_rank': my_rank,
+        'is_in_top': any(u['username'] == user.username for u in result)
+    })
 
 
 # ==================== GAMES ====================
@@ -122,11 +139,12 @@ async def api_create_game(request):
     allow_ai = bool(data.get('allow_ai', False))
     name_raw = data.get('name')
     name = (str(name_raw).strip()[:40] if name_raw else '') or None
+    entry_fee = int(data.get('entry_fee', 0))
     user = request.user_obj
     try:
         g = await manager.create_game(
             {"id": user.id, "username": user.username, "elo": user.elo},
-            size_code, allow_ai, name,
+            size_code, allow_ai, name, entry_fee,
         )
         return JsonResponse({
             "game_id": g.id,
@@ -155,6 +173,17 @@ async def api_join_game(request, game_id: str):
         return JsonResponse({"detail": str(e)}, status=400)
 
 
+@async_require_auth
+async def api_delete_game(request, game_id: str):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed'}, status=405)
+    try:
+        await manager.delete_game(request.user_obj.id, game_id)
+        return JsonResponse({"ok": True})
+    except ValueError as e:
+        return JsonResponse({"detail": str(e)}, status=400)
+
+
 @require_auth
 def api_games_list(request):
     active = Match.objects.filter(status__in=['waiting', 'playing', 'ending']) \
@@ -174,6 +203,9 @@ def api_games_list(request):
         total = (m.map_size or 100) * (m.map_size or 100)
         status = m.status
         players_count = m.players_count
+        turns = 0
+        entry_fee = 0
+        prize_pool = 0
 
         if m.state_json:
             try:
@@ -183,10 +215,12 @@ def api_games_list(request):
                 total = (state.get("map_size") or total) ** 2
                 status = state.get("status") or status
                 players_count = len(state.get("players") or [])
+                turns = state.get("turn", 0)
+                entry_fee = state.get("entry_fee", 0)
+                prize_pool = state.get("prize_pool", 0)
             except Exception:
                 pass
 
-        # Live-данные из памяти приоритетнее
         game = manager.games.get(m.game_id)
         if game:
             occupied = len(game.grid)
@@ -194,6 +228,9 @@ def api_games_list(request):
             status = game.status
             players_count = len(game.players)
             name = game.name or name
+            turns = game.turn
+            entry_fee = game.entry_fee
+            prize_pool = game.prize_pool
 
         occupied_pct = round((occupied / total) * 100, 1) if total else 0.0
 
@@ -213,6 +250,9 @@ def api_games_list(request):
             "occupied": occupied,
             "total": total,
             "occupied_pct": occupied_pct,
+            "turns": turns,
+            "entry_fee": entry_fee,
+            "prize_pool": prize_pool,
         }
 
     return JsonResponse({
