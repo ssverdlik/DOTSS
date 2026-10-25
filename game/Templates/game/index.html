@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>DOTSs — стратегия</title>
-<link rel="icon" href="data:,">
+<!-- Новый SVG Favicon -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 stroke=%22%239eb8ff%22 stroke-width=%228%22 fill=%22none%22/><text x=%2250%22 y=%2265%22 font-size=%2250%22 font-weight=%22bold%22 fill=%22%239eb8ff%22 text-anchor=%22middle%22 font-family=%22Arial%22>D</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,7 +19,7 @@
   .screen.active { display: block; }
   h1 { color: #9eb8ff; font-size: 32px; letter-spacing: 4px; text-align: center; margin-bottom: 20px; }
   h2 { font-size: 16px; color: #9eb8ff; margin-bottom: 12px; }
-  h3 { font-size: 12px; color: #8b8b9b; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; }
+  h3 { font-size: 12px; color: #8b8b9b; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; display: flex; align-items: center; gap: 6px; }
   .panel { background: #17171f; border: 1px solid #262632; border-radius: 10px; padding: 16px; position: relative; }
   input[type=text], input[type=password] {
     width: 100%; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
@@ -63,7 +64,7 @@
   #menu-screen { display: none; }
   #menu-screen.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .profile-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; align-items: center; }
-  .profile-row span:last-child { color: #9eb8ff; font-weight: 600; }
+  .profile-row span:last-child { color: #9eb8ff; font-weight: 600; display: flex; align-items: center; gap: 6px; }
   .elo-big { font-size: 42px; font-weight: 800; color: #ffcc44; text-align: center; margin: 8px 0; }
 
   .lb-row { display: flex; gap: 6px; align-items: center; padding: 5px 0;
@@ -71,7 +72,7 @@
   .lb-row:last-child { border-bottom: none; }
   .lb-pos { color: #8b8b9b; width: 22px; }
   .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-dts { color: #ffcc44; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 2px; }
+  .lb-dts { color: #ffcc44; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
   .lb-games { color: #9ec0ff; font-size: 11px; font-weight: 600; margin-left: 4px; display: flex; align-items: center; gap: 2px; }
   .lb-you { background: #1a2a4a; border-radius: 4px; padding: 5px 4px; }
 
@@ -88,7 +89,7 @@
     display: grid;
     grid-template-columns: 4fr 3fr 3fr;
     gap: 16px;
-    height: calc(100vh - 32px); /* Ограничиваем высоту экрана */
+    height: calc(100vh - 32px);
   }
   #games-screen .panel {
     display: flex;
@@ -105,7 +106,6 @@
     flex-shrink: 0;
   }
 
-  /* Скролл-контейнеры */
   .table-wrapper {
     flex: 1;
     overflow-y: auto;
@@ -117,7 +117,6 @@
   .table-wrapper::-webkit-scrollbar-track { background: #0f0f15; }
   .table-wrapper::-webkit-scrollbar-thumb { background: #2a2a38; border-radius: 3px; }
 
-  /* Прикрепленный рейтинг */
   .lb-pinned {
     flex-shrink: 0;
     border-top: 2px dashed #2a2a38;
@@ -152,7 +151,7 @@
     font-size: 10px; font-weight: 700; background: #3366ee; color: #fff;
   }
   .game-name { font-size: 11px; color: #8b8b9b; margin-top: 2px; display: block; }
-  .game-fee { font-size: 10px; color: #ffcc44; display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .game-fee { font-size: 12px; color: #ffcc44; display: flex; align-items: center; gap: 4px; margin-top: 4px; font-weight: 600; }
   .field-pct { color: #9eb8ff; font-weight: 600; font-variant-numeric: tabular-nums; }
   .games-empty { color: #8b8b9b; font-size: 12px; text-align: center; padding: 20px; }
 
@@ -204,10 +203,23 @@
     display: flex; flex-direction: column; align-items: center; gap: 28px;
   }
 
-  .custom-logo { position: relative; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding-bottom: 20px; width: 200px; }
-  .logo-letters { display: flex; align-items: baseline; color: #9eb8ff; font-family: 'Segoe UI', sans-serif; font-weight: 800; text-shadow: 0 0 20px rgba(80,120,255,.5); letter-spacing: 4px; z-index: 2; }
-  .logo-line-h { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #9eb8ff; box-shadow: 0 0 10px rgba(80,120,255,.5); z-index: 1; }
-  .logo-line-diag { position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #9eb8ff; transform-origin: bottom left; transform: rotate(-25deg); opacity: 0.7; z-index: 1; }
+  .custom-logo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .logo-letters {
+    display: flex;
+    align-items: baseline;
+    color: #9eb8ff;
+    font-family: 'Arial', sans-serif;
+    font-weight: 900;
+    letter-spacing: 2px;
+    z-index: 2;
+    text-shadow: 0 0 20px rgba(80,120,255,.5);
+  }
 
   .preloader-spinner {
     width: 64px; height: 64px;
@@ -257,7 +269,7 @@
     background: rgba(15, 15, 21, 0.82);
     border: 1px solid #262632;
     border-radius: 24px;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     z-index: 5;
     backdrop-filter: blur(4px);
@@ -266,7 +278,7 @@
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   .field-corner.left { left: 12px; color: #ffcc44; }
   .field-corner.right { right: 12px; color: #55ff55; }
@@ -431,17 +443,17 @@
   .player-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .player-count { color: #9eb8ff; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 11px; }
-  .player-dts { color: #ffcc44; font-weight: 600; font-size: 10px;
-                font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 2px; }
+  .player-dts { color: #ffcc44; font-weight: 600; font-size: 12px;
+                font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 4px; }
   .action-btn { width: 100%; padding: 8px 12px; border-radius: 8px; margin-top: 6px;
                 border: 1px solid #2a2a38; background: #1e1e28; color: #e6e6e6;
-                cursor: pointer; text-align: left; font-size: 12px; }
+                cursor: pointer; text-align: left; font-size: 12px; display: flex; align-items: center; gap: 6px; }
   .action-btn:hover { background: #2a2a38; }
   #selected-info { font-size: 11px; color: #b0b0c0; line-height: 1.5; min-height: 32px; }
   #log { flex: 1; overflow: hidden; font-size: 11px; color: #7a7a8a;
          line-height: 1.45; }
   #log div { padding: 2px 0; border-bottom: 1px solid #1e1e28; white-space: nowrap;
-             overflow: hidden; text-overflow: ellipsis; }
+             overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;}
   #log div:last-child { border-bottom: none; }
 
   .preview-box {
@@ -466,13 +478,13 @@
   .help-section { margin-bottom: 16px; }
   .help-section h3 {
     color: #9eb8ff; font-size: 14px; margin: 0 0 6px;
-    text-transform: none; letter-spacing: 0;
+    text-transform: none; letter-spacing: 0; display: flex; align-items: center; gap: 6px;
   }
   .help-section p, .help-section li {
-    font-size: 13px; color: #c8c8d0; line-height: 1.65;
+    font-size: 13px; color: #c8c8d0; line-height: 1.65; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
   }
-  .help-section ul { padding-left: 18px; margin-top: 2px; }
-  .help-section ul li { margin-bottom: 3px; }
+  .help-section ul { padding-left: 18px; margin-top: 2px; list-style: disc; }
+  .help-section ul li { margin-bottom: 3px; display: list-item; }
   .help-section code {
     background: #0f0f15; padding: 1px 6px; border-radius: 4px;
     font-family: 'Consolas', monospace; font-size: 12px; color: #ffcc44;
@@ -498,6 +510,12 @@
     background: #2a2a38;
     border-radius: 2px;
   }
+
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+  }
 </style>
 </head>
 <body>
@@ -507,14 +525,12 @@
   <div class="preloader-box">
     <div class="custom-logo">
       <div class="logo-letters">
-        <span style="font-size: 52px;">D</span>
-        <span style="font-size: 38px;">O</span>
-        <span style="font-size: 28px;">T</span>
-        <span style="font-size: 20px;">S</span>
-        <span style="font-size: 14px;">S</span>
+        <span style="font-size: 76px;">D</span>
+        <span style="font-size: 54px;">O</span>
+        <span style="font-size: 38px;">T</span>
+        <span style="font-size: 24px;">S</span>
+        <span style="font-size: 14px;">s</span>
       </div>
-      <div class="logo-line-h"></div>
-      <div class="logo-line-diag"></div>
     </div>
     <div class="preloader-spinner"></div>
     <div class="preloader-text">Загрузка игры...</div>
@@ -542,7 +558,7 @@
     <h2>Профиль</h2>
     <div class="elo-big" id="my-elo">1000</div>
     <div class="profile-row"><span>Имя</span><span id="my-name">—</span></div>
-    <div class="profile-row"><span>DTs (глоб.)</span><span id="my-dts">0</span></div>
+    <div class="profile-row"><span>Глобальный баланс</span><span id="my-dts">0</span></div>
     <div class="profile-row"><span>Побед</span><span id="my-wins">0</span></div>
     <div class="profile-row"><span>Сыграно</span><span id="my-played">0</span></div>
     <button class="primary" id="btn-games" style="margin-top:16px;">К списку игр</button>
@@ -599,7 +615,6 @@
     <div class="table-wrapper" id="leaderboard-container">
       <div id="leaderboard-games"></div>
     </div>
-    <!-- Блок для прикрепления своей позиции, если ты не в топе -->
     <div class="lb-pinned" id="my-rank-pinned">
       <div class="lb-gap">****</div>
       <div id="my-rank-row"></div>
@@ -611,11 +626,13 @@
   <div class="panel">
     <div class="lobby-header">
       <h2 style="margin:0;">Ожидание игроков</h2>
-      <button class="danger" id="btn-leave-lobby" style="width:auto;">Выйти</button>
+      <div id="lobby-btn-wrapper">
+        <button class="ghost" id="btn-leave-lobby" style="width:auto;">📋 В Лобби</button>
+      </div>
     </div>
     <div class="lobby-game-info" id="lobby-game-info"></div>
     <div id="lobby-players"></div>
-    <p style="margin-top:14px;color:#8b8b9b;font-size:12px;text-align:center;">
+    <p id="lobby-hint" style="margin-top:14px;color:#8b8b9b;font-size:12px;text-align:center;">
       Игра начнётся автоматически при наборе 2+ игроков
     </p>
   </div>
@@ -624,11 +641,11 @@
 <div id="game-screen" class="screen">
   <div id="canvas-container">
     <div class="field-corner left" id="field-coins">
-      <svg class="dts-icon" style="width:18px;height:18px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg>
+      <span id="coin-icon"></span>
       <span id="coins-val">0</span>
     </div>
     <div class="field-corner left" id="field-prize" style="top: 60px; color: #ffcc44; display: none;">
-      🏆 Приз: <span id="prize-val">0</span> DTs
+      🏆 Приз: <span id="prize-val" style="display:flex; align-items:center; gap:4px;"></span>
     </div>
     <div class="field-corner right" id="field-moves">⚡ <span id="moves-val">3</span></div>
     <div class="field-center">
@@ -715,9 +732,11 @@
       </div>
     </label>
     <div id="fee-container" style="display:none; margin-top: 8px;">
-      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+      <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px; align-items:center;">
         <span>Ставка:</span>
-        <span><b id="fee-value">0</b> DTs</span>
+        <span style="display:flex; align-items:center; gap:4px;">
+          <b id="fee-value">0</b> <span id="fee-icon"></span>
+        </span>
       </div>
       <input type="range" id="fee-range" min="1" max="100" value="1">
     </div>
@@ -734,73 +753,74 @@
 
     <div class="help-section">
       <h3>🎯 Цель</h3>
-      <p>Захватить как можно больше клеток карты. Победа:</p>
+      <p>Захватить как можно больше клеток карты. Игра завершается победой, если:</p>
       <ul>
-        <li>Захвачено 70% занятых клеток</li>
-        <li>Все противники уничтожены / сдались</li>
-        <li>Соперник пропустил 5 туров (1v1) или не может ходить</li>
+        <li>Захвачено <b>70% от всей площади карты</b> (независимо от того, сколько клеток свободно)</li>
+        <li>Все противники уничтожены или сдались</li>
+        <li>Соперник <b>полностью заблокирован</b> (не может атаковать, размножаться или усиливаться)</li>
+        <li>В режиме 1v1 соперник пропустил 5 туров подряд</li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>🗺 Размер</h3>
       <ul>
-        <li><b>S</b> — 16×16 · до 3 · быстро</li>
-        <li><b>M</b> — 20×20 · до 6</li>
-        <li><b>L</b> — 40×40 · до 10</li>
-        <li><b>XL</b> — 100×100 · до 20</li>
+        <li><b>S</b> — 16×16 · до 3 игроков · быстрая игра</li>
+        <li><b>M</b> — 20×20 · до 6 игроков</li>
+        <li><b>L</b> — 40×40 · до 10 игроков</li>
+        <li><b>XL</b> — 100×100 · до 20 игроков</li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>⏱ Туры</h3>
       <ul>
-        <li>Тур = 60 секунд</li>
-        <li>Максимум 3 хода за тур</li>
-        <li>Каждая точка — 1 ход за тур</li>
-        <li>Все сходили — тур заканчивается досрочно</li>
+        <li>Один тур длится <b>60 секунд</b></li>
+        <li>Максимум <b>3 хода</b> за тур</li>
+        <li>Каждая точка может сделать только <b>1 ход</b> за тур</li>
+        <li>Если все игроки сходили — тур заканчивается досрочно</li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>🎮 Действия</h3>
       <ul>
-        <li><b>Усиление</b> (+1) — 1 DTs, точка блокируется до конца тура</li>
+        <li><b>Усиление</b> (+1) — стоит 1 <span class="dts-inline"></span>, точка блокируется до конца тура</li>
         <li><b>Размножение</b> — пустой сосед, новая сила 1</li>
-        <li><b>Атака</b> — защитник −1; если сильнее — атакующий −1 (мин. 1); захват при 0 → сила 1</li>
+        <li><b>Атака</b> — защитник теряет 1; если защитник был сильнее атакующего, атакующий тоже теряет 1 (мин. 1); при обнулении защиты клетка захватывается с силой 1</li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>🔒 Захват окружением</h3>
-      <p>Полностью окружённая своими клетками группа захватывается без атаки. Смешанное окружение — не работает.</p>
+      <p>Если группа клеток полностью окружена вашими клетками (и не имеет пустых соседей), она захватывается без атаки. Если окружение смешанное (ваши и вражеские клетки) — захват не работает.</p>
     </div>
 
     <div class="help-section">
-      <h3><svg class="dts-icon" style="width:18px;height:18px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg> DTs</h3>
+      <h3><span class="dts-inline"></span> Экономика</h3>
       <ul>
-        <li>+1 за новую внутреннюю (все 4 соседа свои)</li>
-        <li>−1 за усиление</li>
-        <li>Победитель ×2, остальные ×1</li>
+        <li>+1 <span class="dts-inline"></span> за каждую новую внутреннюю клетку (все 4 соседа свои)</li>
+        <li>−1 <span class="dts-inline"></span> за усиление</li>
+        <li>Победитель получает ×2 к набранным <span class="dts-inline"></span>, остальные ×1</li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>🏳️ Сдаться</h3>
       <ul>
-        <li>Клетки остаются, но заморожены (полупрозрачные)</li>
-        <li>Другие могут атаковать и захватывать их</li>
-        <li>Получаешь набранные DTs</li>
+        <li>Клетки остаются на поле, но замораживаются (становятся полупрозрачными)</li>
+        <li>Другие игроки могут атаковать и захватывать их</li>
+        <li>Вы получаете набранные <span class="dts-inline"></span></li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>🖱 Управление</h3>
       <ul>
-        <li>ЛКМ клик — выбрать / сходить</li>
-        <li>ЛКМ + drag — сдвинуть карту</li>
-        <li>Колесо — зум</li>
-        <li>Кнопка со своим цветом — авто-зум на свои точки</li>
+        <li><b>ЛКМ клик</b> — выбрать свою точку / сделать ход</li>
+        <li><b>ЛКМ + drag</b> — сдвинуть карту</li>
+        <li><b>Колесо мыши</b> — зум</li>
+        <li><b>Кнопка с цветом</b> — авто-зум на свои точки</li>
       </ul>
     </div>
 
@@ -848,7 +868,54 @@ const INNER_MASS_THRESHOLD = 2;
 const POWERUP_COST = 1;
 const MAP_MARGIN = 20;
 
-const DTS_SVG = (size = 20) => `<svg class="dts-icon" style="width:${size}px;height:${size}px;" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" stroke="#ffcc44" stroke-width="8" fill="none"/><text x="50" y="65" font-size="55" font-weight="bold" fill="#ffcc44" text-anchor="middle" font-family="Arial">DTs</text></svg>`;
+// Иконка DTs
+const DTS_SVG = (size = 20) => `<svg class="dts-icon" style="width:${size}px;height:${size}px;" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="32" stroke="#ffcc44" stroke-width="8" fill="none"/>
+  <line x1="12" y1="36" x2="88" y2="36" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <line x1="12" y1="64" x2="88" y2="64" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <text x="50" y="61" font-size="36" font-family="Arial, sans-serif" font-weight="900" fill="#ffcc44" text-anchor="middle" letter-spacing="1">DTs</text>
+</svg>`;
+
+// Иконка ИИ (AI)
+const AI_SVG = (size = 14) => `<svg class="ai-icon" style="width:${size}px;height:${size}px;vertical-align:middle;margin-left:4px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="20" y="30" width="60" height="50" rx="10" stroke="#9ec0ff" stroke-width="8"/>
+  <circle cx="35" cy="50" r="5" fill="#9ec0ff"/>
+  <circle cx="65" cy="50" r="5" fill="#9ec0ff"/>
+  <path d="M40 70 L60 70" stroke="#9ec0ff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M50 30 L50 10" stroke="#9ec0ff" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="50" cy="10" r="5" fill="#9ec0ff"/>
+</svg>`;
+
+// Иконка "Игрок" (человечек)
+const PLAYER_SVG = (size = 14) => `<svg class="player-icon" style="width:${size}px;height:${size}px;vertical-align:middle;margin-left:4px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="30" r="15" stroke="#e6e6e6" stroke-width="8"/>
+  <path d="M20 80 Q20 60 50 60 Q80 60 80 80" stroke="#e6e6e6" stroke-width="8" stroke-linecap="round"/>
+</svg>`;
+
+const winReasons = {
+  'dominance_70': 'Захвачено 70% площади карты',
+  'opponents_dead_or_surrendered': 'Все противники уничтожены или сдались',
+  'last_player_with_cells': 'Остался единственным игроком на карте',
+  'opponent_surrendered': 'Соперник сдался',
+  '1v1_absent_5': 'Соперник пропустил 5 туров подряд (1v1)',
+  'both_absent_5': 'Оба игрока пропустили 5 туров (ничья)',
+  'stuck_opponents': 'Соперник полностью заблокирован (не может ходить)',
+  'both_stuck': 'Оба игрока заблокированы (ничья)',
+  'all_surrendered': 'Все игроки сдались (ничья)',
+  'no_cells_left': 'На карте не осталось клеток'
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('coin-icon').innerHTML = DTS_SVG(32);
+  document.getElementById('fee-icon').innerHTML = DTS_SVG(20);
+
+  document.querySelectorAll('.dts-inline').forEach(el => {
+    el.innerHTML = DTS_SVG(18);
+  });
+
+  const lbHeader = document.querySelector('#games-screen .panel:nth-child(3) p');
+  if (lbHeader) lbHeader.innerHTML = `Топ-20 по ${DTS_SVG(16)}`;
+});
 
 const state = {
   token: localStorage.getItem('dots_token'),
@@ -1006,7 +1073,7 @@ async function enterMenu() {
 function renderProfile() {
   const m = state.me;
   $('my-elo').textContent = m.elo; $('my-name').textContent = m.username;
-  $('my-dts').innerHTML = DTS_SVG(24) + ' ' + (m.global_dts || 0);
+  $('my-dts').innerHTML = DTS_SVG(32) + ' ' + (m.global_dts || 0);
   $('my-wins').textContent = m.games_won; $('my-played').textContent = m.games_played;
 }
 
@@ -1015,7 +1082,6 @@ async function refreshLeaderboard() {
     const data = await api('/api/leaderboard');
     const rows = data.top;
 
-    // Рендер списка (топ-20)
     const renderInto = (el) => {
       if (!el) return;
       el.innerHTML = '';
@@ -1026,14 +1092,13 @@ async function refreshLeaderboard() {
         d.innerHTML = `<span class="lb-pos">${i + 1}.</span>
           <span class="lb-name">${escape(r.username)}</span>
           <span class="lb-games">🏆${r.games_won || 0}</span>
-          <span class="lb-dts">${DTS_SVG(18)}${r.global_dts || 0}</span>`;
+          <span class="lb-dts">${DTS_SVG(24)}${r.global_dts || 0}</span>`;
         el.appendChild(d);
       });
     };
     renderInto($('leaderboard'));
     renderInto($('leaderboard-games'));
 
-    // Рендер прикрепленной строки, если мы не в топе
     const pinnedEl = $('my-rank-pinned');
     const myRankRowEl = $('my-rank-row');
 
@@ -1043,7 +1108,7 @@ async function refreshLeaderboard() {
         d.innerHTML = `<span class="lb-pos">${data.my_rank}.</span>
           <span class="lb-name">${escape(state.me.username)}</span>
           <span class="lb-games">🏆${state.me.games_won || 0}</span>
-          <span class="lb-dts">${DTS_SVG(18)}${state.me.global_dts || 0}</span>`;
+          <span class="lb-dts">${DTS_SVG(24)}${state.me.global_dts || 0}</span>`;
         myRankRowEl.innerHTML = '';
         myRankRowEl.appendChild(d);
         pinnedEl.classList.add('show');
@@ -1161,7 +1226,7 @@ function renderActiveGames(games) {
     let nameHtml = g.name ? `<span class="game-name">${escape(g.name)}</span>` : '';
     let feeHtml = '';
     if (g.entry_fee > 0) {
-      feeHtml = `<span class="game-fee">${DTS_SVG(14)} Взнос: ${g.entry_fee} / Банк: ${g.prize_pool || 0}</span>`;
+      feeHtml = `<span class="game-fee">${DTS_SVG(20)} Взнос: ${g.entry_fee} / Банк: ${g.prize_pool || 0}</span>`;
     }
 
     tr.innerHTML = `
@@ -1246,7 +1311,7 @@ $('btn-surrender').onclick = () => {
   if (!me || me.surrendered) return;
   customConfirm(
     'Сдаться?',
-    'Клетки останутся на поле (полупрозрачные), другие смогут их захватить.<br>Ты получишь набранные DTs.',
+    `Клетки останутся на поле (полупрозрачные), другие смогут их захватить.<br>Ты получишь набранные ${DTS_SVG(20)}.`,
     () => {
       playSound('surrender');
       sendAction({ action: 'surrender' });
@@ -2213,7 +2278,7 @@ function syncFull(msg) {
 
   if (msg.prize_pool > 0) {
     $('field-prize').style.display = 'flex';
-    $('prize-val').innerHTML = DTS_SVG(20) + ' ' + msg.prize_pool;
+    $('prize-val').innerHTML = DTS_SVG(28) + ' ' + msg.prize_pool;
   } else {
     $('field-prize').style.display = 'none';
   }
@@ -2269,8 +2334,8 @@ function applyChanges(msg) {
     for (const [pid, amount] of Object.entries(msg.dts_gained)) {
       const p = msg.players[pid];
       if (p) {
-        if (pid === state.playerId) { playSound('income'); log(`+${amount} DTs`); }
-        else log(`${p.name} +${amount} DTs`);
+        if (pid === state.playerId) { playSound('income'); log(`+${amount} ${DTS_SVG(18)}`); }
+        else log(`${p.name} +${amount} ${DTS_SVG(18)}`);
       }
     }
   }
@@ -2444,7 +2509,7 @@ function renderPlayers() {
     row.className = 'player-row' + (isDc ? ' dc' : '') + (p.surrendered ? ' surr' : '');
     const dcInfo = isDc && !p.absent
       ? `<span class="dc-badge" data-pid="${p.id}">⏳${p.grace_seconds || 60}с</span>` : '';
-    const aiBadge = p.is_ai ? `<span class="ai-badge">AI</span>` : '';
+    const aiBadge = p.is_ai ? AI_SVG(16) : PLAYER_SVG(16);
     const surrBadge = p.surrendered ? `<span class="surr-badge">🏳️</span>` : '';
     const absentBadge = p.absent ? `<span class="absent-badge">🚫 отсутствует</span>` : '';
     const missedInfo = p.missed_turns > 0 && !p.surrendered && !p.absent
@@ -2453,7 +2518,7 @@ function renderPlayers() {
       <div class="player-dot" style="background:${p.color}"></div>
       <div class="player-name">${escape(p.name)}${you}${aiBadge}${surrBadge}${absentBadge}${dcInfo}${missedInfo}</div>
       <div class="player-count">${p.count}</div>
-      <div class="player-dts">${DTS_SVG(16)}${p.dts || 0}</div>`;
+      <div class="player-dts">${DTS_SVG(20)}${p.dts || 0}</div>`;
     el.appendChild(row);
   }
 }
@@ -2481,14 +2546,14 @@ function renderActions() {
   const b = document.createElement('button');
   b.className = 'action-btn';
   if (canAfford) {
-    b.textContent = `⬆ Усилиться (+1) — ${POWERUP_COST} DTs`;
+    b.innerHTML = `⬆ Усилиться (+1) — ${POWERUP_COST} ${DTS_SVG(18)}`;
     b.onclick = () => {
       playSound('powerup');
       sendAction({ action: 'powerup', from: [x, y] });
       state.selected = null; clearTargets(); renderAll();
     };
   } else {
-    b.textContent = `⬆ Нужно ${POWERUP_COST} DTs`;
+    b.innerHTML = `⬆ Нужно ${POWERUP_COST} ${DTS_SVG(18)}`;
     b.style.opacity = '0.4'; b.style.pointerEvents = 'none';
   }
   actions.appendChild(b);
@@ -2516,8 +2581,10 @@ function handleCellClick(x, y) {
     }
   }
   const cell = state.grid.get(`${x},${y}`);
+  const movesLeft = computeMovesLeft();
+
   if (cell && cell.owner === state.playerId) {
-    if (cell.acted) {
+    if (cell.acted || movesLeft <= 0) {
        state.selected = null; clearTargets(); renderAll(); return;
     }
     playSound('select');
@@ -2536,7 +2603,6 @@ function connectWS() {
   state.ws = ws;
   state.reconnectPending = false;
 
-  // --- ИСПРАВЛЕНИЕ: Очередь сообщений ---
   let messageQueue = Promise.resolve();
 
   ws.onopen = () => {
@@ -2549,7 +2615,6 @@ function connectWS() {
   ws.onmessage = e => {
     try {
       const msg = JSON.parse(e.data);
-      // Добавляем обработку в очередь, чтобы избежать гонки данных
       messageQueue = messageQueue.then(() => handleMessage(msg)).catch(err => console.error(err));
     } catch (err) {
       console.error("Failed to parse WS message", err);
@@ -2577,6 +2642,11 @@ async function handleMessage(msg) {
       else showGamesScreen();
       break;
     case 'joined':
+      if (state.gameId && state.gameId !== msg.game_id) {
+        const logEl = $('log');
+        if (logEl) logEl.innerHTML = '';
+        state.lastAdTurn = 0;
+      }
       state.playerId = msg.player_id;
       state.gameId = msg.game_id;
       break;
@@ -2617,9 +2687,9 @@ async function handleMessage(msg) {
       redrawMasses();
       if (msg.player_id === state.playerId) {
         showModal('Ты сдался',
-          'Игра продолжается без тебя.<br><br>' +
-          'Твои клетки остались на поле (полупрозрачные), другие могут их захватить.<br>' +
-          'Твои DTs будут зачислены в глобальный баланс.');
+          `Игра продолжается без тебя.<br><br>` +
+          `Твои клетки остались на поле (полупрозрачные), другие могут их захватить.<br>` +
+          `Твои ${DTS_SVG(18)} будут зачислены в глобальный баланс.`);
         state.selected = null;
         clearTargets();
       }
@@ -2670,16 +2740,22 @@ async function handleMessage(msg) {
                    w.user_id === state.players[state.playerId].user_id;
       playSound(iWon ? 'win' : 'lose');
 
+      const reasonText = winReasons[msg.win_reason] || 'Игра завершена';
       let body = '';
+
       if (msg.dts && myId && msg.dts[myId]) {
         const d = msg.dts[myId];
         if (iWon) {
-          body = `🏆 Вы победили!<br><br>Вы получаете <b>+${d.earned}</b> DTs в глобальный баланс.`;
+          body = `🏆 Вы победили!<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${DTS_SVG(24)} в глобальный баланс.`;
         } else if (w) {
-          body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Вы получаете <b>+${d.earned}</b> DTs в глобальный баланс.`;
+          body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${DTS_SVG(24)} в глобальный баланс.`;
         } else {
-          body = `Игра окончена вничью.<br><br>Вы получаете <b>+${d.earned}</b> DTs.`;
+          body = `Игра окончена вничью.<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${DTS_SVG(24)}.`;
         }
+      } else {
+          if (iWon) body = `🏆 Вы победили!<br><br>Причина: ${reasonText}.`;
+          else if (w) body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.`;
+          else body = `Игра окончена вничью.<br><br>Причина: ${reasonText}.`;
       }
 
       showModal(w ? `🏆 ${w.name} побеждает!` : 'Игра окончена', body);
@@ -2708,7 +2784,7 @@ function renderLobby(players, gameInfo) {
     const nameHtml = gameInfo.name ? `<b>${escape(gameInfo.name)}</b> · ` : '';
     let feeHtml = '';
     if (gameInfo.entry_fee > 0) {
-      feeHtml = ` · <span style="color:#ffcc44;">🏆 Призовой фонд: ${gameInfo.prize_pool} DTs</span>`;
+      feeHtml = ` · <span style="color:#ffcc44; display:flex; align-items:center; gap:4px;">🏆 Призовой фонд: ${gameInfo.prize_pool} ${DTS_SVG(18)}</span>`;
     }
     infoEl.innerHTML = `${nameHtml}Размер: <b>${gameInfo.size_code}</b>
       (${gameInfo.map_size}×${gameInfo.map_size}) ·
@@ -2718,12 +2794,24 @@ function renderLobby(players, gameInfo) {
   const el = $('lobby-players'); el.innerHTML = '';
   for (const pid in players) {
     const p = players[pid];
-    const aiBadge = p.is_ai ? '<span class="ai-badge">AI</span>' : '';
+    const aiBadge = p.is_ai ? AI_SVG(18) : PLAYER_SVG(18);
     const row = document.createElement('div');
     row.className = 'player-row';
     row.innerHTML = `<div class="player-dot" style="background:${p.color}"></div>
       <div class="player-name">${escape(p.name)}${aiBadge}</div>`;
     el.appendChild(row);
+  }
+
+  const count = Object.keys(players).length;
+  const wrapper = $('lobby-btn-wrapper');
+  const hint = $('lobby-hint');
+
+  if (count > 1) {
+    wrapper.innerHTML = `<span style="color: #9eb8ff; font-weight: bold; font-size: 14px; animation: pulse 1.5s infinite;">Игра запускается...</span>`;
+    hint.textContent = "Подготовка поля...";
+  } else {
+    wrapper.innerHTML = `<button class="ghost" id="btn-leave-lobby" style="width:auto;" onclick="showGamesScreen()">📋 В Лобби</button>`;
+    hint.textContent = "Игра начнётся автоматически при наборе 2+ игроков";
   }
 }
 
@@ -2741,7 +2829,7 @@ function sendAction(a) {
 }
 function log(msg) {
   const el = $('log'); if (!el) return;
-  const d = document.createElement('div'); d.textContent = msg;
+  const d = document.createElement('div'); d.innerHTML = msg;
   el.insertBefore(d, el.firstChild);
   while (el.children.length > 12) el.removeChild(el.lastChild);
 }

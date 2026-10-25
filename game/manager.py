@@ -18,13 +18,11 @@ from .constants import (
 
 MISSED_TURNS_1V1_LOSE = 5
 
-
 @dataclass
 class Cell:
     owner: str
     strength: int
     acted: bool = False
-
 
 @dataclass
 class Player:
@@ -57,7 +55,6 @@ class Player:
                 "absent": (not self.is_ai and not self.surrendered
                            and self.missed_turns >= MISSED_TURNS_TO_LOSE)}
 
-
 @dataclass
 class Game:
     id: str
@@ -84,10 +81,8 @@ class Game:
     entry_fee: int = 0
     prize_pool: int = 0
 
-
 def cell_dict(x, y, c: Cell):
     return {"x": x, "y": y, "owner": c.owner, "strength": c.strength, "acted": c.acted}
-
 
 def _serialize_game_state(game: Game) -> dict:
     return {
@@ -118,7 +113,6 @@ def _serialize_game_state(game: Game) -> dict:
             for (x, y), c in game.grid.items()
         ],
     }
-
 
 class Manager:
     def __init__(self):
@@ -190,7 +184,6 @@ class Manager:
         free_ratio = (total - len(game.grid)) / total
         return "ending" if free_ratio < FREE_CELLS_ENDING else "playing"
 
-    # ==================== ВОССТАНОВЛЕНИЕ ====================
     async def _restore_game_from_db(self, uid: int) -> Optional[Game]:
         async with self._restore_lock:
             def _db():
@@ -271,7 +264,6 @@ class Manager:
                   f"players={len(game.players)}, cells={len(game.grid)})")
             return game
 
-    # ==================== CREATE / JOIN ====================
     async def create_game(self, user, size_code: str, allow_ai: bool,
                           name: Optional[str] = None, entry_fee: int = 0) -> Game:
         if size_code not in MAP_SIZES:
@@ -463,7 +455,6 @@ class Manager:
             Match.objects.filter(game_id=game_id).delete()
         await sync_to_async(_delete_db, thread_sensitive=True)()
 
-    # ==================== СТАРТ ====================
     async def _try_start(self, game: Game):
         if game.status not in ("waiting", "countdown"):
             return
@@ -507,17 +498,14 @@ class Manager:
             "game_name": game.name, "prize_pool": game.prize_pool,
         })
 
-        # --- ИСПРАВЛЕНИЕ: Принудительный первый ход ИИ ---
         if any(p.is_ai and not p.surrendered for p in game.players.values()):
             async with game.lock:
                 await self._ai_take_one_move(game)
-        # ------------------------------------------------
 
         game.turn_task = asyncio.create_task(self._turn_loop(game))
         if any(p.is_ai and not p.surrendered for p in game.players.values()):
             game.ai_task = asyncio.create_task(self._ai_loop(game))
 
-    # ==================== ЦИКЛЫ ====================
     async def _turn_loop(self, game: Game):
         try:
             while game.status in ("playing", "ending"):
@@ -691,6 +679,7 @@ class Manager:
             should_end, winner = self._check_stuck_players(game)
             if should_end:
                 game.winner = winner
+                game.win_reason = 'stuck_opponents' if winner else 'both_stuck'
                 if game.turn_task and game.turn_task is not asyncio.current_task():
                     game.turn_task.cancel()
                 if game.ai_task and game.ai_task is not asyncio.current_task():
@@ -710,8 +699,10 @@ class Manager:
     def _check_winner(self, game: Game) -> Optional[str]:
         active = [p for p in game.players.values() if not p.surrendered]
         if len(active) == 0:
+            game.win_reason = 'all_surrendered'
             return None
         if len(active) == 1:
+            game.win_reason = 'opponents_dead_or_surrendered'
             return active[0].id
         counts = {}
         for c in game.grid.values():
@@ -719,14 +710,17 @@ class Manager:
             if p and not p.surrendered:
                 counts[c.owner] = counts.get(c.owner, 0) + 1
         if not counts:
+            game.win_reason = 'no_cells_left'
             return None
         if len(counts) == 1:
+            game.win_reason = 'last_player_with_cells'
             return list(counts.keys())[0]
         max_cells = game.map_size * game.map_size
         total = sum(counts.values())
         if total >= max_cells * 0.3:
             for pid, cnt in counts.items():
                 if cnt / max_cells >= DOMINANCE_THRESHOLD:
+                    game.win_reason = 'dominance_70'
                     return pid
         return None
 
@@ -745,7 +739,7 @@ class Manager:
                 nc = game.grid.get((nx, ny))
                 if nc is None:
                     return True
-                if not player.is_ai and nc.owner != player.id:
+                if nc.owner != player.id:
                     return True
         return False
 
@@ -786,7 +780,6 @@ class Manager:
             return False
         return True
 
-    # ==================== ЗАХВАТЫ ====================
     def _find_all_groups(self, game: Game) -> list:
         visited, groups = set(), []
         for key in game.grid:
@@ -845,7 +838,6 @@ class Manager:
                 break
         return all_changes
 
-    # ==================== ДЕЙСТВИЯ ====================
     async def handle_action(self, game: Game, player: Player, msg: dict):
         if game.status not in ("playing", "ending") or not player:
             return
@@ -969,6 +961,7 @@ class Manager:
         active = [p for p in game.players.values() if not p.surrendered]
         if len(active) == 0:
             game.winner = None
+            game.win_reason = 'all_surrendered'
             await self.finalize_game(game)
             return
         if len(active) == 1:
@@ -1002,7 +995,6 @@ class Manager:
                     gained[pid] = delta
         return gained
 
-    # ==================== ФИНАЛИЗАЦИЯ ====================
     async def finalize_game(self, game: Game):
         if game.recorded:
             return
@@ -1090,7 +1082,6 @@ class Manager:
                 )
         await sync_to_async(_db, thread_sensitive=True)()
 
-    # ==================== DISCONNECT ====================
     async def on_disconnect(self, uid: int, ws):
         if self.user_ws.get(uid) is not ws:
             return
@@ -1180,6 +1171,5 @@ class Manager:
             "players": self._players_info(game),
         })
         return game
-
 
 manager = Manager()
