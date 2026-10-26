@@ -139,8 +139,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
-
+# Путь к папке, куда collectstatic будет собирать файлы
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# URL, по которому статика будет доступна
+STATIC_URL = '/static/'
+# Папки, где Django ищет исходные статические файлы
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

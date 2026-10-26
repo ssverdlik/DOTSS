@@ -18,11 +18,13 @@ from .constants import (
 
 MISSED_TURNS_1V1_LOSE = 5
 
+
 @dataclass
 class Cell:
     owner: str
     strength: int
     acted: bool = False
+
 
 @dataclass
 class Player:
@@ -41,6 +43,7 @@ class Player:
     missed_turns: int = 0
     is_ai: bool = False
     surrendered: bool = False
+    just_joined: bool = False
 
     def to_dict(self):
         return {"id": self.id, "user_id": self.user_id, "name": self.name,
@@ -54,6 +57,7 @@ class Player:
                 "surrendered": self.surrendered,
                 "absent": (not self.is_ai and not self.surrendered
                            and self.missed_turns >= MISSED_TURNS_TO_LOSE)}
+
 
 @dataclass
 class Game:
@@ -81,8 +85,10 @@ class Game:
     entry_fee: int = 0
     prize_pool: int = 0
 
+
 def cell_dict(x, y, c: Cell):
     return {"x": x, "y": y, "owner": c.owner, "strength": c.strength, "acted": c.acted}
+
 
 def _serialize_game_state(game: Game) -> dict:
     return {
@@ -113,6 +119,7 @@ def _serialize_game_state(game: Game) -> dict:
             for (x, y), c in game.grid.items()
         ],
     }
+
 
 class Manager:
     def __init__(self):
@@ -184,6 +191,7 @@ class Manager:
         free_ratio = (total - len(game.grid)) / total
         return "ending" if free_ratio < FREE_CELLS_ENDING else "playing"
 
+    # ==================== ВОССТАНОВЛЕНИЕ ====================
     async def _restore_game_from_db(self, uid: int) -> Optional[Game]:
         async with self._restore_lock:
             def _db():
@@ -264,6 +272,7 @@ class Manager:
                   f"players={len(game.players)}, cells={len(game.grid)})")
             return game
 
+    # ==================== CREATE / JOIN ====================
     async def create_game(self, user, size_code: str, allow_ai: bool,
                           name: Optional[str] = None, entry_fee: int = 0) -> Game:
         if size_code not in MAP_SIZES:
@@ -286,6 +295,7 @@ class Manager:
                 if entry_fee > u.global_dts * 0.5:
                     raise ValueError("Ставка не может превышать 50% от баланса")
                 User.objects.filter(id=user["id"]).update(global_dts=F('global_dts') - entry_fee)
+
             await sync_to_async(_check_and_deduct, thread_sensitive=True)()
 
         info = MAP_SIZES[size_code]
@@ -332,37 +342,40 @@ class Manager:
             if (total - len(g.grid)) / total < FREE_CELLS_ENDING:
                 raise ValueError("Слишком мало свободных клеток")
 
-        if g.entry_fee > 0:
-            def _deduct():
-                from .models import User
-                from django.db.models import F
-                u = User.objects.get(id=user["id"])
-                if u.global_dts < g.entry_fee:
-                    raise ValueError("Недостаточно DTs для входа")
-                User.objects.filter(id=user["id"]).update(global_dts=F('global_dts') - g.entry_fee)
-            await sync_to_async(_deduct, thread_sensitive=True)()
-            g.prize_pool += g.entry_fee
+        async with g.lock:
+            if g.entry_fee > 0:
+                def _deduct():
+                    from .models import User
+                    from django.db.models import F
+                    u = User.objects.get(id=user["id"])
+                    if u.global_dts < g.entry_fee:
+                        raise ValueError("Недостаточно DTs для входа")
+                    User.objects.filter(id=user["id"]).update(global_dts=F('global_dts') - g.entry_fee)
 
-        p = await self._add_player_to_game(g, user, is_ai=False)
-        await self._sync_game_to_db(g)
-        if g.status == "waiting":
-            await self.lobby_broadcast(g)
-        else:
-            self._spawn_player(g, p)
-            if p.ws:
-                cells = [cell_dict(x, y, c) for (x, y), c in g.grid.items()]
-                await self.send(p.ws, {
-                    "type": "state", "game_id": g.id, "grid": cells,
-                    "players": self._players_info(g),
-                    "turn": g.turn, "turn_ends_at": g.turn_ends_at,
-                    "map_size": g.map_size, "tournament_id": None,
-                    "game_name": g.name, "prize_pool": g.prize_pool,
-                })
-            await self.broadcast(g, {
-                "type": "player_joined",
-                "players": self._players_info(g),
-                "player_name": p.name,
-            })
+                await sync_to_async(_deduct, thread_sensitive=True)()
+                g.prize_pool += g.entry_fee
+
+            p = await self._add_player_to_game(g, user, is_ai=False)
+            p.just_joined = True
+            p.missed_turns = 0
+
+            await self._sync_game_to_db(g)
+            if g.status == "waiting":
+                await self.lobby_broadcast(g)
+            else:
+                self._spawn_player(g, p)
+                new_cell = g.grid.get(p.spawn)
+                if new_cell:
+                    await self.broadcast(g, {
+                        "type": "changes",
+                        "changes": [cell_dict(p.spawn[0], p.spawn[1], new_cell)],
+                        "players": self._players_info(g),
+                        "actor": p.id,
+                        "dts_gained": {},
+                        "action_type": "spawn",
+                        "action_from": None,
+                        "action_to": list(p.spawn)
+                    })
         return g, p
 
     async def _add_player_to_game(self, g: Game, user, is_ai: bool = False):
@@ -424,6 +437,7 @@ class Manager:
                     "players_count": len(game.players),
                     "state_json": json.dumps(state),
                 })
+
         await sync_to_async(_db, thread_sensitive=True)()
 
     async def delete_game(self, user_id: int, game_id: str):
@@ -443,6 +457,7 @@ class Manager:
                 from .models import User
                 from django.db.models import F
                 User.objects.filter(id=user_id).update(global_dts=F('global_dts') + g.entry_fee)
+
             await sync_to_async(_refund, thread_sensitive=True)()
 
         g.status = "ended"
@@ -453,8 +468,10 @@ class Manager:
         def _delete_db():
             from .models import Match
             Match.objects.filter(game_id=game_id).delete()
+
         await sync_to_async(_delete_db, thread_sensitive=True)()
 
+    # ==================== СТАРТ ====================
     async def _try_start(self, game: Game):
         if game.status not in ("waiting", "countdown"):
             return
@@ -490,10 +507,12 @@ class Manager:
         await self._sync_game_to_db(game)
 
         cells = [cell_dict(x, y, c) for (x, y), c in game.grid.items()]
+        time_left = max(0, game.turn_ends_at - time.time())
         await self.broadcast(game, {
             "type": "state", "game_id": game.id, "grid": cells,
             "players": self._players_info(game),
             "turn": game.turn, "turn_ends_at": game.turn_ends_at,
+            "time_left": time_left,
             "map_size": game.map_size, "tournament_id": game.tournament_id,
             "game_name": game.name, "prize_pool": game.prize_pool,
         })
@@ -506,6 +525,7 @@ class Manager:
         if any(p.is_ai and not p.surrendered for p in game.players.values()):
             game.ai_task = asyncio.create_task(self._ai_loop(game))
 
+    # ==================== ЦИКЛЫ ====================
     async def _turn_loop(self, game: Game):
         try:
             while game.status in ("playing", "ending"):
@@ -564,13 +584,14 @@ class Manager:
                     game.grid[(tx, ty)] = Cell(owner=ai.id, strength=1, acted=True)
                     game.grid[(x, y)].acted = True
                     ai.moves_used += 1
+                    ai.missed_turns = 0  # СБРОС СТАТУСА
 
                     cap_changes = self._check_captures(game)
                     dts_gained = self._apply_inner_income(game, inner_before)
                     changes = [
-                        cell_dict(tx, ty, game.grid[(tx, ty)]),
-                        cell_dict(x, y, game.grid[(x, y)]),
-                    ] + cap_changes
+                                  cell_dict(tx, ty, game.grid[(tx, ty)]),
+                                  cell_dict(x, y, game.grid[(x, y)]),
+                              ] + cap_changes
 
                     await self.broadcast(game, {
                         "type": "changes", "changes": changes,
@@ -603,6 +624,7 @@ class Manager:
 
                     ai_cell.acted = True
                     ai.moves_used += 1
+                    ai.missed_turns = 0  # СБРОС СТАТУСА
 
                     cap_changes = self._check_captures(game)
                     dts_gained = self._apply_inner_income(game, inner_before)
@@ -642,6 +664,12 @@ class Manager:
             for p in game.players.values():
                 if p.is_ai or p.surrendered:
                     continue
+
+                if p.just_joined:
+                    p.just_joined = False
+                    p.missed_turns = 0
+                    continue
+
                 if p.moves_used == 0:
                     p.missed_turns += 1
                 else:
@@ -690,9 +718,11 @@ class Manager:
 
             await self._sync_game_to_db(game)
 
+            time_left = max(0, game.turn_ends_at - time.time())
             await self.broadcast(game, {
                 "type": "turn_end", "turn": game.turn,
                 "turn_ends_at": game.turn_ends_at,
+                "time_left": time_left,
                 "players": self._players_info(game),
             })
 
@@ -780,6 +810,7 @@ class Manager:
             return False
         return True
 
+    # ==================== ЗАХВАТЫ ====================
     def _find_all_groups(self, game: Game) -> list:
         visited, groups = set(), []
         for key in game.grid:
@@ -838,6 +869,7 @@ class Manager:
                 break
         return all_changes
 
+    # ==================== ДЕЙСТВИЯ ====================
     async def handle_action(self, game: Game, player: Player, msg: dict):
         if game.status not in ("playing", "ending") or not player:
             return
@@ -845,7 +877,7 @@ class Manager:
             return
         if player.surrendered:
             return await self.send(player.ws, {"type": "error",
-                                                "message": "Ты уже сдался"})
+                                               "message": "Ты уже сдался"})
 
         action = msg.get("action")
         if action == "surrender":
@@ -865,6 +897,10 @@ class Manager:
                 return await self.send(player.ws, {"type": "error", "message": "Уже ходила"})
             if player.moves_used >= CELLS_PER_TURN:
                 return await self.send(player.ws, {"type": "error", "message": "Ходы кончились"})
+
+            # СБРОС СТАТУСА "ОТОШЕЛ" ПРИ ЛЮБОМ ДЕЙСТВИИ
+            player.missed_turns = 0
+            player.just_joined = False  # Если он ходит, он уже не "только что пришел"
 
             inner_before = self._count_inner_by_owner(game)
             changes, action_from, action_to = [], [x, y], None
@@ -995,6 +1031,7 @@ class Manager:
                     gained[pid] = delta
         return gained
 
+    # ==================== ФИНАЛИЗАЦИЯ ====================
     async def finalize_game(self, game: Game):
         if game.recorded:
             return
@@ -1041,7 +1078,7 @@ class Manager:
             "type": "game_over", "winner": game.winner,
             "win_reason": game.win_reason,
             "elo": {str(pi["user_id"]): {"before": pi["elo_before"],
-                                          "after": pi["elo_after"]}
+                                         "after": pi["elo_after"]}
                     for pi in players_info},
             "dts": dts_breakdown,
         })
@@ -1054,6 +1091,7 @@ class Manager:
                     from .models import User
                     from django.db.models import F
                     User.objects.filter(id=winner_p.user_id).update(global_dts=F('global_dts') + game.prize_pool)
+
                 await sync_to_async(_payout, thread_sensitive=True)()
             else:
                 for p in game.players.values():
@@ -1062,6 +1100,7 @@ class Manager:
                             from .models import User
                             from django.db.models import F
                             User.objects.filter(id=uid).update(global_dts=F('global_dts') + game.entry_fee)
+
                         await sync_to_async(_refund, thread_sensitive=True)()
 
     @staticmethod
@@ -1080,8 +1119,10 @@ class Manager:
                     games_played=F('games_played') + 1,
                     games_won=F('games_won') + (1 if e["is_winner"] else 0),
                 )
+
         await sync_to_async(_db, thread_sensitive=True)()
 
+    # ==================== DISCONNECT ====================
     async def on_disconnect(self, uid: int, ws):
         if self.user_ws.get(uid) is not ws:
             return
@@ -1095,6 +1136,10 @@ class Manager:
         if game.status == "ended":
             self.user_game.pop(uid, None)
             return
+
+        if player.surrendered:
+            return
+
         if player.grace_task and not player.grace_task.done():
             player.grace_task.cancel()
         player.ws = None
@@ -1146,30 +1191,46 @@ class Manager:
         player.ws = ws
         self.user_ws[user["id"]] = ws
 
+        is_joining = player.just_joined
+        player.just_joined = False
+
         await self.send(ws, {"type": "joined", "player_id": player.id,
                              "game_id": game.id, "map_size": game.map_size,
-                             "reconnected": True})
+                             "reconnected": not is_joining})
 
         if game.status in ("waiting", "countdown"):
             await self.send(ws, {"type": "lobby",
-                                  "players": self._players_info(game),
-                                  "game_info": self._game_info(game)})
+                                 "players": self._players_info(game),
+                                 "game_info": self._game_info(game)})
             await self._try_start(game)
         else:
             cells = [cell_dict(x, y, c) for (x, y), c in game.grid.items()]
+            time_left = max(0, game.turn_ends_at - time.time())
             await self.send(ws, {
                 "type": "state", "game_id": game.id, "grid": cells,
                 "players": self._players_info(game),
                 "turn": game.turn, "turn_ends_at": game.turn_ends_at,
+                "time_left": time_left,
                 "map_size": game.map_size,
                 "tournament_id": game.tournament_id,
                 "game_name": game.name, "prize_pool": game.prize_pool,
             })
-        await self.broadcast(game, {
-            "type": "player_reconnected",
-            "player_id": player.id, "player_name": player.name,
-            "players": self._players_info(game),
-        })
+
+        if not player.surrendered:
+            if is_joining:
+                await self.broadcast(game, {
+                    "type": "player_joined",
+                    "players": self._players_info(game),
+                    "player_name": player.name,
+                    "prize_pool": game.prize_pool,  # <--- ДОБАВЛЕНО
+                })
+            else:
+                await self.broadcast(game, {
+                    "type": "player_reconnected",
+                    "player_id": player.id, "player_name": player.name,
+                    "players": self._players_info(game),
+                })
         return game
+
 
 manager = Manager()
