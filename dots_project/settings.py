@@ -156,3 +156,8 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+YANDEX_CLIENT_ID = '9bce6ff742c54d18ae81d46223317ed6'
+YANDEX_CLIENT_SECRET = '4192158b69814be8b78f9399ebf034d2'
+YANDEX_REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/yandex/callback'  # для локалки
+# Для прода: 'https://ваш-домен.ru/api/auth/yandex/callback'

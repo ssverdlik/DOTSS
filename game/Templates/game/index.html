@@ -1,13 +1,12 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+{% load static %}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>DOTSs — стратегия</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 stroke=%22%239eb8ff%22 stroke-width=%228%22 fill=%22none%22/><text x=%2250%22 y=%2265%22 font-size=%2250%22 font-weight=%22bold%22 fill=%22%239eb8ff%22 text-anchor=%22middle%22 font-family=%22Arial%22>D</text></svg>">
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
-<!-- PixiJS загружается локально, чтобы избежать ошибки Tracking Prevention -->
 <script src="{% static 'js/pixi.min.js' %}"></script>
 </head>
 <body>
@@ -41,6 +40,18 @@
       <input type="password" id="in-password" placeholder="Пароль" autocomplete="current-password">
       <button type="submit" class="primary" id="btn-auth">Войти</button>
     </form>
+
+    <div style="display:flex; align-items:center; gap:10px; margin: 16px 0 12px; color:#6a6a7a; font-size:12px;">
+      <div style="flex:1; height:1px; background:#2a2a38;"></div>
+      <span>или</span>
+      <div style="flex:1; height:1px; background:#2a2a38;"></div>
+    </div>
+
+    <a href="/api/auth/yandex" style="display:flex; align-items:center; justify-content:center; gap:10px; text-decoration:none; background:linear-gradient(180deg,#fc3f1d,#d92c0d); color:#fff; padding:11px; border-radius:8px; font-weight:600; font-size:15px;">
+      <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; background:#fff; color:#FC3F1D; font-weight:900; border-radius:50%; font-size:15px; font-family:Arial, sans-serif;">Я</span>
+      <span>Войти через Яндекс</span>
+    </a>
+
     <div class="err" id="auth-err"></div>
   </div>
 </div>
@@ -49,12 +60,16 @@
   <div class="panel">
     <h2>Профиль</h2>
     <div class="elo-big" id="my-elo">1000</div>
-    <div class="profile-row"><span>Имя</span><span id="my-name">—</span></div>
+    <div class="profile-row">
+      <span>Имя</span>
+      <span id="my-name" style="cursor:pointer; border-bottom:1px dashed #9eb8ff;" onclick="openProfileModal()">—</span>
+    </div>
     <div class="profile-row"><span>Глобальный баланс</span><span id="my-dts">0</span></div>
     <div class="profile-row"><span>Побед</span><span id="my-wins">0</span></div>
     <div class="profile-row"><span>Сыграно</span><span id="my-played">0</span></div>
-    <button class="primary" id="btn-games" style="margin-top:16px;">К списку игр</button>
-    <button class="ghost" id="btn-logout" style="width:100%;margin-top:8px;">Выйти</button>
+    <button class="primary" id="btn-open-profile" style="margin-top:12px;" onclick="openProfileModal()">👤 Мой профиль</button>
+    <button class="primary" id="btn-games" style="margin-top:8px;">К списку игр</button>
+    <button class="ghost" id="btn-logout" style="width:100%;margin-top:8px;">🚪 Выйти</button>
     <h3>Рейтинг</h3>
     <div id="leaderboard"></div>
   </div>
@@ -79,9 +94,7 @@
     </span>
     <div class="table-wrapper">
       <table class="games-table">
-        <thead><tr>
-          <th>Игра</th><th>Игр.</th><th>Статус</th><th>Поле</th><th></th>
-        </tr></thead>
+        <thead><tr><th>Игра</th><th>Игр.</th><th>Статус</th><th>Поле</th><th></th></tr></thead>
         <tbody id="active-games-body">
           <tr><td colspan="5" class="games-empty">Нет активных игр</td></tr>
         </tbody>
@@ -90,7 +103,6 @@
   </div>
   <div class="panel">
     <h2>История игр</h2>
-    <!-- Добавлен класс no-scroll для обрезки нижних строк -->
     <div class="table-wrapper no-scroll">
       <table class="games-table">
         <thead><tr><th>Размер</th><th>Игр.</th><th>Туры</th><th>Победитель</th><th>Окончание</th></tr></thead>
@@ -102,9 +114,7 @@
   </div>
   <div class="panel">
     <h2>Глобальный рейтинг</h2>
-    <p style="color:#8b8b9b;font-size:11px;margin-bottom:10px;">
-      Топ-20 по DTs
-    </p>
+    <p style="color:#8b8b9b;font-size:11px;margin-bottom:10px;">Топ-20 по DTs</p>
     <div class="table-wrapper" id="leaderboard-container">
       <div id="leaderboard-games"></div>
     </div>
@@ -125,33 +135,21 @@
     </div>
     <div class="lobby-game-info" id="lobby-game-info"></div>
     <div id="lobby-players"></div>
-    <p id="lobby-hint" style="margin-top:14px;color:#8b8b9b;font-size:12px;text-align:center;">
-      Игра начнётся автоматически при наборе 2+ игроков
-    </p>
+    <p id="lobby-hint" style="margin-top:14px;color:#8b8b9b;font-size:12px;text-align:center;">Игра начнётся автоматически при наборе 2+ игроков</p>
   </div>
 </div>
 
 <div id="game-screen" class="screen">
   <div id="canvas-container">
-    <div class="field-corner left" id="field-coins">
-      <span id="coin-icon"></span>
-      <span id="coins-val">0</span>
-    </div>
-    <div class="field-corner left" id="field-prize" style="top: 60px; color: #ffcc44; display: none;">
-      <span id="prize-icon"></span> Приз: <span id="prize-val" style="display:flex; align-items:center; gap:4px;"></span>
-    </div>
+    <div class="field-corner left" id="field-coins"><span id="coin-icon"></span> <span id="coins-val">0</span></div>
+    <div class="field-corner left" id="field-prize" style="top: 60px; color: #ffcc44; display: none;"><span id="prize-icon"></span> Приз: <span id="prize-val" style="display:flex; align-items:center; gap:4px;"></span></div>
     <div class="field-corner right" id="field-moves"><span id="energy-icon"></span> <span id="moves-val">3</span></div>
     <div class="field-center">
-      <div class="field-turn">
-        Тур <span id="field-turn-num">1</span> · <span id="field-timer">1:00</span>
-      </div>
+      <div class="field-turn">Тур <span id="field-turn-num">1</span> · <span id="field-timer">1:00</span></div>
       <div id="scoreboard"></div>
       <div class="field-message hidden" id="field-message"></div>
     </div>
-    <div id="reconnect-overlay">
-      <div class="spin"></div>
-      <div>Переподключение…</div>
-    </div>
+    <div id="reconnect-overlay"><div class="spin"></div><div>Переподключение…</div></div>
   </div>
   <div class="panel game-panel">
     <div class="panel-top">
@@ -165,19 +163,9 @@
       </div>
       <button class="icon-btn" id="btn-sound" title="Отключить звук"></button>
     </div>
-    <div class="panel-section">
-      <h3>Игроки</h3>
-      <div id="player-list"></div>
-    </div>
-    <div class="panel-section">
-      <h3>Выбрано</h3>
-      <div id="selected-info">Кликни по своей точке</div>
-      <div id="actions"></div>
-    </div>
-    <div class="panel-section" id="log-section">
-      <h3>Лог</h3>
-      <div id="log"></div>
-    </div>
+    <div class="panel-section"><h3>Игроки</h3><div id="player-list"></div></div>
+    <div class="panel-section"><h3>Выбрано</h3><div id="selected-info">Кликни по своей точке</div><div id="actions"></div></div>
+    <div class="panel-section" id="log-section"><h3>Лог</h3><div id="log"></div></div>
   </div>
 </div>
 
@@ -187,49 +175,19 @@
     <h2>Создать игру</h2>
     <input type="text" id="game-name-input" placeholder="Название (необязательно)" maxlength="40" style="margin-bottom:10px;">
     <div class="create-options" id="size-options">
-      <label class="size-option" data-size="S">
-        <input type="radio" name="size" value="S">
-        <span class="size-name">S</span><span class="size-info">16×16 · до 3 игроков</span>
-      </label>
-      <label class="size-option selected" data-size="M">
-        <input type="radio" name="size" value="M" checked>
-        <span class="size-name">M</span><span class="size-info">20×20 · до 6 игроков</span>
-      </label>
-      <label class="size-option" data-size="L">
-        <input type="radio" name="size" value="L">
-        <span class="size-name">L</span><span class="size-info">40×40 · до 10 игроков</span>
-      </label>
-      <label class="size-option" data-size="XL">
-        <input type="radio" name="size" value="XL">
-        <span class="size-name">XL</span><span class="size-info">100×100 · до 20 игроков</span>
-      </label>
+      <label class="size-option" data-size="S"><input type="radio" name="size" value="S"><span class="size-name">S</span><span class="size-info">16×16 · до 3 игроков</span></label>
+      <label class="size-option selected" data-size="M"><input type="radio" name="size" value="M" checked><span class="size-name">M</span><span class="size-info">20×20 · до 6 игроков</span></label>
+      <label class="size-option" data-size="L"><input type="radio" name="size" value="L"><span class="size-name">L</span><span class="size-info">40×40 · до 10 игроков</span></label>
+      <label class="size-option" data-size="XL"><input type="radio" name="size" value="XL"><span class="size-name">XL</span><span class="size-info">100×100 · до 20 игроков</span></label>
     </div>
-
-    <label class="ai-checkbox" style="margin-top: 10px;">
-      <input type="checkbox" id="ai-toggle">
-      <div>
-        <div class="ai-label" id="ai-label-icon">Разрешить ИИ-игрока</div>
-        <div class="ai-desc">Позволит начать игру со вторым игроком-ботом</div>
-      </div>
-    </label>
-
-    <label class="ai-checkbox" style="margin-top: 10px;">
-      <input type="checkbox" id="fee-toggle">
-      <div>
-        <div class="ai-label" id="fee-label-icon">Игра с призовым фондом</div>
-        <div class="ai-desc">Выберите ставку (не более 50% от баланса)</div>
-      </div>
-    </label>
+    <label class="ai-checkbox" style="margin-top: 10px;"><input type="checkbox" id="ai-toggle"><div><div class="ai-label" id="ai-label-icon">Разрешить ИИ-игрока</div><div class="ai-desc">Позволит начать игру со вторым игроком-ботом</div></div></label>
+    <label class="ai-checkbox" style="margin-top: 10px;"><input type="checkbox" id="fee-toggle"><div><div class="ai-label" id="fee-label-icon">Игра с призовым фондом</div><div class="ai-desc">Выберите ставку (не более 50% от баланса)</div></div></label>
     <div id="fee-container" style="display:none; margin-top: 8px;">
       <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px; align-items:center;">
-        <span>Ставка:</span>
-        <span style="display:flex; align-items:center; gap:4px;">
-          <b id="fee-value">0</b> <span id="fee-icon"></span>
-        </span>
+        <span>Ставка:</span><span style="display:flex; align-items:center; gap:4px;"><b id="fee-value">0</b> <span id="fee-icon"></span></span>
       </div>
       <input type="range" id="fee-range" min="1" max="100" value="1">
     </div>
-
     <div class="err" id="create-err"></div>
     <button class="primary" id="btn-confirm-create" style="margin-top:14px;">Создать</button>
     <button class="ghost" id="btn-cancel-create" style="width:100%;margin-top:8px;">Отмена</button>
@@ -239,85 +197,19 @@
 <div class="modal-bg" id="help-modal">
   <div class="modal modal-wide">
     <h2>Как играть в DOTSs</h2>
-
-    <div class="help-section">
-      <h3 id="help-goal-icon">Цель</h3>
-      <p>Захватить как можно больше клеток карты. Игра завершается победой, если:</p>
-      <ul>
-        <li>Захвачено <b>70% от всей площади карты</b> (независимо от того, сколько клеток свободно)</li>
-        <li>Все противники уничтожены или сдались</li>
-        <li>Соперник <b>полностью заблокирован</b> (не может атаковать, размножаться или усиливаться)</li>
-        <li>В режиме 1v1 соперник пропустил 5 туров подряд</li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-map-icon">Размер</h3>
-      <ul>
-        <li><b>S</b> — 16×16 · до 3 игроков · быстрая игра</li>
-        <li><b>M</b> — 20×20 · до 6 игроков</li>
-        <li><b>L</b> — 40×40 · до 10 игроков</li>
-        <li><b>XL</b> — 100×100 · до 20 игроков</li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-time-icon">Туры</h3>
-      <ul>
-        <li>Один тур длится <b>60 секунд</b></li>
-        <li>Максимум <b>3 хода</b> за тур</li>
-        <li>Каждая точка может сделать только <b>1 ход</b> за тур</li>
-        <li>Если все игроки сходили — тур заканчивается досрочно</li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-actions-icon">Действия</h3>
-      <ul>
-        <li><b>Усиление</b> (+1) — стоит 1 <span class="dts-inline"></span>, точка блокируется до конца тура</li>
-        <li><b>Размножение</b> — пустой сосед, новая сила 1</li>
-        <li><b>Атака</b> — защитник теряет 1; если защитник был сильнее атакующего, атакующий тоже теряет 1 (мин. 1); при обнулении защиты клетка захватывается с силой 1</li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-capture-icon">Захват окружением</h3>
-      <p>Если группа клеток полностью окружена вашими клетками (и не имеет пустых соседей), она захватывается без атаки. Если окружение смешанное (ваши и вражеские клетки) — захват не работает.</p>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-economy-icon">Экономика</h3>
-      <ul>
-        <li>+1 <span class="dts-inline"></span> за каждую новую внутреннюю клетку (все 4 соседа свои)</li>
-        <li>−1 <span class="dts-inline"></span> за усиление</li>
-        <li>Победитель получает ×2 к набранным <span class="dts-inline"></span>, остальные ×1</li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-surrender-icon">Сдаться</h3>
-      <ul>
-        <li>Клетки остаются на поле, но замораживаются (становятся полупрозрачными)</li>
-        <li>Другие игроки могут атаковать и захватывать их</li>
-        <li>Вы получаете набранные <span class="dts-inline"></span></li>
-      </ul>
-    </div>
-
-    <div class="help-section">
-      <h3 id="help-control-icon">Управление</h3>
-      <ul>
-        <li><b>ЛКМ клик</b> — выбрать свою точку / сделать ход</li>
-        <li><b>ЛКМ + drag</b> — сдвинуть карту</li>
-        <li><b>Колесо мыши</b> — зум</li>
-        <li><b>Кнопка с цветом</b> — авто-зум на свои точки</li>
-      </ul>
-    </div>
-
+    <div class="help-section"><h3 id="help-goal-icon">Цель</h3><p>Захватить как можно больше клеток карты. Игра завершается победой, если:</p><ul><li>Захвачено <b>70% от всей площади карты</b> (независимо от того, сколько клеток свободно)</li><li>Все противники уничтожены или сдались</li><li>Соперник <b>полностью заблокирован</b> (не может атаковать, размножаться или усиливаться)</li><li>В режиме 1v1 соперник пропустил 5 туров подряд</li></ul></div>
+    <div class="help-section"><h3 id="help-map-icon">Размер</h3><ul><li><b>S</b> — 16×16 · до 3 · быстро</li><li><b>M</b> — 20×20 · до 6</li><li><b>L</b> — 40×40 · до 10</li><li><b>XL</b> — 100×100 · до 20</li></ul></div>
+    <div class="help-section"><h3 id="help-time-icon">Туры</h3><ul><li>Тур = 60 секунд</li><li>Максимум 3 хода за тур</li><li>Каждая точка — 1 ход за тур</li><li>Все сходили — тур заканчивается досрочно</li></ul></div>
+    <div class="help-section"><h3 id="help-actions-icon">Действия</h3><ul><li><b>Усиление</b> (+1) — 1 <span class="dts-inline"></span>, точка блокируется до конца тура</li><li><b>Размножение</b> — пустой сосед, новая сила 1</li><li><b>Атака</b> — защитник −1; если сильнее — атакующий −1 (мин. 1); захват при 0 → сила 1</li></ul></div>
+    <div class="help-section"><h3 id="help-capture-icon">Захват окружением</h3><p>Полностью окружённая своими клетками группа захватывается без атаки. Смешанное окружение — не работает.</p></div>
+    <div class="help-section"><h3 id="help-economy-icon">Экономика</h3><ul><li>+1 <span class="dts-inline"></span> за новую внутреннюю (все 4 соседа свои)</li><li>−1 за усиление</li><li>Победитель ×2, остальные ×1</li></ul></div>
+    <div class="help-section"><h3 id="help-surrender-icon">Сдаться</h3><ul><li>Клетки остаются, но заморожены</li><li>Другие могут атаковать и захватывать</li><li>Получаешь набранные <span class="dts-inline"></span></li></ul></div>
+    <div class="help-section"><h3 id="help-control-icon">Управление</h3><ul><li>ЛКМ клик — выбрать / сходить</li><li>ЛКМ + drag — сдвинуть карту</li><li>Колесо — зум</li><li>Кнопка с цветом — авто-зум</li></ul></div>
     <button class="primary" id="help-close" style="margin-top:8px;">Понятно</button>
   </div>
 </div>
 
-<div class="modal-bg" id="confirm-modal">
+<div class="modal-bg" id="confirm-modal" style="z-index: 10000;">
   <div class="modal">
     <h2 id="confirm-title">—</h2>
     <div id="confirm-body" style="font-size:14px; line-height:1.5; margin-bottom:20px; color:#c8c8d0;"></div>
@@ -328,7 +220,7 @@
   </div>
 </div>
 
-<div class="modal-bg" id="modal-bg">
+<div class="modal-bg" id="modal-bg" style="z-index: 10000;">
   <div class="modal">
     <h2 id="modal-title">—</h2>
     <div id="modal-body"></div>
@@ -336,18 +228,80 @@
   </div>
 </div>
 
-<!-- Рекламное окно -->
 <div class="modal-bg" id="ad-modal" style="z-index: 9999;">
   <div class="modal" style="width: 90vw; height: 90vh; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(15, 15, 21, 0.98); border: 2px solid #4477ff;">
-    <!-- МЕСТО ДЛЯ РЕКЛАМЫ ЯНДЕКС: сюда вставить код рекламного блока -->
     <h2 style="font-size: 36px; color: #9eb8ff; text-align: center; margin-bottom: 20px;">Здесь может быть ваша реклама</h2>
     <p style="color: #8b8b9b; margin-bottom: 40px;">Реклама помогает нам развивать игру</p>
-    <!-- КОНЕЦ МЕСТА ДЛЯ РЕКЛАМЫ -->
     <button class="primary" id="btn-close-ad" style="width: 200px; margin-top: 20px;">Закрыть</button>
   </div>
 </div>
 
-<!-- Подключение JS -->
+<!-- Профиль -->
+<div class="modal-bg" id="profile-modal" style="z-index: 999;">
+  <div class="modal" style="width: 90vw; height: 90vh; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; background: #17171f; border: 1px solid #262632; padding: 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #262632; padding-bottom: 12px; margin-bottom: 16px; flex-shrink: 0;">
+      <h2 style="margin:0; display:flex; align-items:center; gap:12px;">
+        <div id="prof-avatar-wrap" style="width:36px; height:36px;"></div>
+        <span id="prof-name">Имя</span>
+      </h2>
+      <button class="ghost" onclick="closeProfileModal()">✖ Закрыть</button>
+    </div>
+
+    <div class="profile-grid" style="display:grid; grid-template-columns: 1fr 2fr; gap:16px; flex:1; min-height:0; overflow:hidden;">
+      <div style="display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+        <div class="panel" style="text-align:center; padding: 16px;">
+          <h3>Рейтинг ELO</h3>
+          <div style="font-size:48px; font-weight:800; color:#ffcc44;" id="prof-elo">1000</div>
+        </div>
+        <div class="panel">
+          <h3>Статистика</h3>
+          <div class="profile-row"><span>Глобальные DTs</span><span id="prof-dts">0</span></div>
+          <div class="profile-row"><span>Сыграно</span><span id="prof-played">0</span></div>
+          <div class="profile-row"><span>Побед</span><span id="prof-wins">0</span></div>
+          <div class="profile-row"><span>Winrate</span><span id="prof-winrate">0%</span></div>
+        </div>
+        <div class="panel" id="prof-account-panel">
+          <h3>Управление аккаунтом</h3>
+          <div id="password-status" style="font-size:12px; color:#8b8b9b; margin-bottom:10px; line-height:1.4;"></div>
+          <form onsubmit="event.preventDefault(); changePassword();" autocomplete="on">
+            <input type="text" id="prof-username-hidden" name="username" autocomplete="username" style="display:none;" readonly>
+            <input type="password" id="prof-old-pass" placeholder="Текущий пароль" style="margin-bottom:8px;" autocomplete="current-password">
+            <input type="password" id="prof-new-pass" placeholder="Новый пароль (мин. 4 симв.)" style="margin-bottom:8px;" autocomplete="new-password">
+            <input type="password" id="prof-new-pass2" placeholder="Повторите новый" style="margin-bottom:8px;" autocomplete="new-password">
+            <div class="err" id="prof-pass-err"></div>
+            <button class="primary" type="submit">💾 Сохранить пароль</button>
+          </form>
+
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid #262632;">
+            <h3 style="margin-bottom:8px;">Привязка аккаунтов</h3>
+            <div id="yandex-link-status" style="font-size:12px; color:#8b8b9b; margin-bottom:10px; line-height:1.4;"></div>
+            <a id="btn-yandex-link" href="/api/auth/yandex?link=1"
+               style="display:none; align-items:center; justify-content:center; gap:8px; text-decoration:none; background:linear-gradient(180deg,#fc3f1d,#d92c0d); color:#fff; padding:9px; border-radius:8px; font-weight:600; font-size:13px;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; background:#fff; color:#FC3F1D; font-weight:900; border-radius:50%; font-size:13px; font-family:Arial, sans-serif;">Я</span>
+              Привязать Яндекс
+            </a>
+            <button id="btn-yandex-unlink" class="ghost" style="width:100%; display:none;" onclick="unlinkYandex()">Отвязать Яндекс</button>
+          </div>
+
+          <button class="ghost" style="width:100%; margin-top:14px; border-color:#663333; color:#ff8888;" onclick="logoutFromProfile()">🚪 Выйти из аккаунта</button>
+        </div>
+      </div>
+
+      <div class="panel" style="display:flex; flex-direction:column; min-height:0;">
+        <h3>Последние матчи</h3>
+        <div style="flex:1; overflow-y:auto; min-height:0;">
+          <table class="games-table" style="width:100%;">
+            <thead><tr><th>Дата</th><th>Размер</th><th>Клетки</th><th>Результат</th></tr></thead>
+            <tbody id="prof-history-body">
+              <tr><td colspan="4" class="games-empty">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="{% static 'js/icons.js' %}"></script>
 <script src="{% static 'js/api.js' %}"></script>
 <script src="{% static 'js/pixi_game.js' %}"></script>

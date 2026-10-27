@@ -1,5 +1,7 @@
-Django>=4.2,<5.0
+Django>=4.2
 channels>=4.0
-channels-redis>=4.2
+channels-redis>=4.0
 daphne>=4.0
-redis>=5.0
+# // psycopg2-binary>=2.9 //      # если используете PostgreSQL
+redis>=4.5                 # клиент для channels-redis
+requests>=2.28

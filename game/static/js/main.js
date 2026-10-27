@@ -9,8 +9,20 @@ const state = {
   strengthMap: new Map(), lobbyGameInfo: null,
   muted: localStorage.getItem('dots_muted') === '1',
   warned10Sec: false, warned20Pct: false, lastAdTurn: 0,
-  iClickedThisTurn: false, // Флаг для снятия статуса "отошел"
+  iClickedThisTurn: false,
 };
+
+// Перехват URL-параметров (после OAuth-редиректа)
+const _urlParams = new URLSearchParams(window.location.search);
+const _yandexToken = _urlParams.get('yandex_token');
+const _yandexLinked = _urlParams.get('yandex_linked');
+const _yandexError = _urlParams.get('yandex_error');
+
+if (_yandexToken) {
+  state.token = _yandexToken;
+  localStorage.setItem('dots_token', _yandexToken);
+  window.history.replaceState({}, '', '/');
+}
 
 const POWERUP_COST = 1;
 const winReasons = {
@@ -29,21 +41,28 @@ const winReasons = {
 const $ = id => document.getElementById(id);
 const escape = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-/* === POLLING for GAMES LIST === */
+/* === AVATARS === */
+const _FALLBACK_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="30" r="15" stroke="#e6e6e6" stroke-width="8"/><path d="M20 80 Q20 60 50 60 Q80 60 80 80" stroke="#e6e6e6" stroke-width="8" stroke-linecap="round"/></svg>'
+);
+
+function renderAvatar(url, size = 24) {
+  if (url) {
+    return `<img src="${url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;background:#2a2a38;flex-shrink:0;" onerror="this.onerror=null; this.src='${_FALLBACK_AVATAR}';" alt="">`;
+  }
+  return `<img src="${_FALLBACK_AVATAR}" style="width:${size}px;height:${size}px;border-radius:50%;vertical-align:middle;margin-right:6px;background:#2a2a38;flex-shrink:0;" alt="">`;
+}
+
+/* === POLLING === */
 let gamesPollTimer = null;
 function startGamesPolling() {
   stopGamesPolling();
   gamesPollTimer = setInterval(() => {
-    if ($('games-screen').classList.contains('active')) {
-      refreshGames();
-    }
+    if ($('games-screen').classList.contains('active')) refreshGames();
   }, 3000);
 }
 function stopGamesPolling() {
-  if (gamesPollTimer) {
-    clearInterval(gamesPollTimer);
-    gamesPollTimer = null;
-  }
+  if (gamesPollTimer) { clearInterval(gamesPollTimer); gamesPollTimer = null; }
 }
 
 function showScreen(id) {
@@ -51,7 +70,6 @@ function showScreen(id) {
   $(id).classList.add('active');
   document.body.classList.toggle('in-game', id === 'game-screen');
   if (id === 'game-screen') setTimeout(() => resizePixi(), 0);
-
   if (id === 'games-screen') startGamesPolling();
   else stopGamesPolling();
 }
@@ -73,6 +91,7 @@ function customConfirm(title, body, onYes) {
 $('confirm-yes').onclick = () => { $('confirm-modal').classList.remove('show'); if (confirmCallback) confirmCallback(); confirmCallback = null; };
 $('confirm-no').onclick = () => { $('confirm-modal').classList.remove('show'); confirmCallback = null; };
 
+/* === AUTH === */
 let authMode = 'login';
 $('tab-login').onclick = () => { authMode = 'login'; $('tab-login').classList.add('active'); $('tab-register').classList.remove('active'); $('btn-auth').textContent = 'Войти'; };
 $('tab-register').onclick = () => { authMode = 'register'; $('tab-register').classList.add('active'); $('tab-login').classList.remove('active'); $('btn-auth').textContent = 'Создать аккаунт'; };
@@ -90,17 +109,34 @@ $('btn-auth').onclick = async () => {
 };
 
 $('btn-logout').onclick = () => {
+  customConfirm('Выйти?', 'Вы выйдете из аккаунта.', () => doLogout());
+};
+
+function doLogout() {
   state.token = null; localStorage.removeItem('dots_token');
   if (state.ws) { state.ws.close(); state.ws = null; }
   stopGamesPolling();
   showScreen('auth-screen');
-};
+}
 
 async function enterMenu() {
   try { state.me = await api('/api/me'); }
   catch { state.token = null; localStorage.removeItem('dots_token'); return showScreen('auth-screen'); }
   document.cookie = `dots_uid=${state.me.user_id}; path=/; SameSite=Lax`;
   renderProfile(); refreshLeaderboard(); refreshTournaments();
+
+  // Уведомления после OAuth-привязки
+  if (_yandexLinked === '1') {
+    setTimeout(() => showModal('Готово', 'Яндекс успешно привязан к вашему аккаунту.'), 200);
+    window.history.replaceState({}, '', '/');
+  } else if (_yandexError === 'already_linked') {
+    setTimeout(() => showModal('Ошибка', 'Этот Яндекс уже привязан к другому аккаунту.'), 200);
+    window.history.replaceState({}, '', '/');
+  } else if (_yandexError === 'need_login') {
+    setTimeout(() => showModal('Ошибка', 'Сначала войдите в аккаунт, затем привязывайте Яндекс.'), 200);
+    window.history.replaceState({}, '', '/');
+  }
+
   await showGamesScreen();
 }
 
@@ -111,10 +147,11 @@ function renderProfile() {
   $('my-wins').textContent = m.games_won; $('my-played').textContent = m.games_played;
 }
 
+/* === LEADERBOARD === */
 async function refreshLeaderboard() {
   try {
     const data = await api('/api/leaderboard');
-    const rows = data.top;
+    const rows = data.top || data;
     const renderInto = (el) => {
       if (!el) return;
       el.innerHTML = '';
@@ -124,7 +161,14 @@ async function refreshLeaderboard() {
         if (state.me && r.username === state.me.username) d.classList.add('lb-you');
 
         d.innerHTML = `<span class="lb-pos">${i + 1}.</span>
-          <span class="lb-name">${escape(r.username)}</span>
+          <span class="lb-name" style="display:flex; align-items:center; gap:2px;">
+            <a href="javascript:void(0)" onclick="openPublicProfile(${r.user_id})"
+               style="display:flex; align-items:center; gap:2px; color:inherit; text-decoration:none; cursor:pointer; flex:1; overflow:hidden;"
+               title="Профиль ${escape(r.username)}">
+              ${renderAvatar(r.avatar_url, 26)}
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escape(r.username)}</span>
+            </a>
+          </span>
           <span class="lb-games">${ICONS.trophy(32)} ${r.games_won || 0}</span>
           <span class="lb-dts">${ICONS.dts(32)}${r.global_dts || 0}</span>`;
         el.appendChild(d);
@@ -136,11 +180,14 @@ async function refreshLeaderboard() {
     const pinnedEl = $('my-rank-pinned');
     const myRankRowEl = $('my-rank-row');
 
-    if (!data.is_in_top && state.me) {
+    if (data.is_in_top === false && state.me) {
         const d = document.createElement('div');
         d.className = 'lb-row lb-you';
         d.innerHTML = `<span class="lb-pos">${data.my_rank}.</span>
-          <span class="lb-name">${escape(state.me.username)}</span>
+          <span class="lb-name" style="display:flex; align-items:center; gap:2px;">
+            ${renderAvatar(state.me.avatar_url, 26)}
+            ${escape(state.me.username)}
+          </span>
           <span class="lb-games">${ICONS.trophy(32)} ${state.me.games_won || 0}</span>
           <span class="lb-dts">${ICONS.dts(32)}${state.me.global_dts || 0}</span>`;
         myRankRowEl.innerHTML = '';
@@ -152,6 +199,202 @@ async function refreshLeaderboard() {
   } catch (e) { console.error(e); }
 }
 
+/* === PROFILE MODAL (свой) === */
+async function openProfileModal() {
+  if (!state.me) return;
+  const m = state.me;
+  $('prof-name').textContent = m.username;
+  $('prof-elo').textContent = m.elo;
+  $('prof-dts').innerHTML = `${ICONS.dts(24)} ${m.global_dts || 0}`;
+  $('prof-played').textContent = m.games_played || 0;
+  $('prof-wins').textContent = m.games_won || 0;
+  const wr = m.games_played > 0 ? ((m.games_won / m.games_played) * 100).toFixed(1) : '0.0';
+  $('prof-winrate').textContent = `${wr}%`;
+  $('prof-avatar-wrap').innerHTML = renderAvatar(m.avatar_url, 36);
+  $('prof-username-hidden').value = m.username;
+
+  const panel = $('prof-account-panel');
+  if (panel) panel.style.display = 'block';
+
+  const hasPass = !!m.has_password;
+  $('password-status').textContent = hasPass
+    ? '✓ Пароль установлен. Можно изменить ниже.'
+    : 'Вход только через Яндекс. Вы можете задать пароль для входа по логину.';
+  $('prof-old-pass').style.display = hasPass ? 'block' : 'none';
+  $('prof-pass-err').textContent = '';
+  $('prof-pass-err').style.color = '';
+  $('prof-old-pass').value = '';
+  $('prof-new-pass').value = '';
+  $('prof-new-pass2').value = '';
+
+  // Блок привязки Яндекса
+  // Блок привязки Яндекса
+  const hasYandex = !!m.yandex_linked;
+  $('yandex-link-status').textContent = hasYandex
+    ? '✓ Яндекс привязан. Вы можете входить через Яндекс на экране авторизации.'
+    : 'Привяжите Яндекс, чтобы входить в игру в один клик.';
+  $('btn-yandex-link').style.display = hasYandex ? 'none' : 'inline-flex';
+  $('btn-yandex-unlink').style.display = hasYandex ? 'block' : 'none';
+
+  // ⬇️ НОВАЯ СТРОКА: подставляем токен в URL ссылки
+  if (state.token) {
+    $('btn-yandex-link').href = `/api/auth/yandex?link=1&token=${encodeURIComponent(state.token)}`;
+  }
+
+  if (hasYandex && !m.has_password) {
+    $('btn-yandex-unlink').disabled = true;
+    $('btn-yandex-unlink').textContent = 'Отвязать (сначала задайте пароль)';
+  } else {
+    $('btn-yandex-unlink').disabled = false;
+    $('btn-yandex-unlink').textContent = 'Отвязать Яндекс';
+  }
+
+  $('profile-modal').classList.add('show');
+  loadMyMatches();
+}
+window.openProfileModal = openProfileModal;
+
+function closeProfileModal() {
+  $('profile-modal').classList.remove('show');
+}
+window.closeProfileModal = closeProfileModal;
+
+/* === PROFILE MODAL (чужой) === */
+async function openPublicProfile(userId) {
+  if (!userId) return;
+  if (state.me && state.me.user_id === userId) {
+    openProfileModal();
+    return;
+  }
+  try {
+    const u = await api('/api/user_profile/' + userId);
+    $('prof-name').textContent = u.username;
+    $('prof-elo').textContent = u.elo;
+    $('prof-dts').innerHTML = `${ICONS.dts(24)} ${u.global_dts || 0}`;
+    $('prof-played').textContent = u.games_played || 0;
+    $('prof-wins').textContent = u.games_won || 0;
+    const wr = u.games_played > 0 ? ((u.games_won / u.games_played) * 100).toFixed(1) : '0.0';
+    $('prof-winrate').textContent = `${wr}%`;
+    $('prof-avatar-wrap').innerHTML = renderAvatar(u.avatar_url, 36);
+
+    const panel = $('prof-account-panel');
+    if (panel) panel.style.display = 'none';
+
+    $('profile-modal').classList.add('show');
+    loadUserMatches(userId);
+  } catch (e) {
+    showModal('Ошибка', escape(e.message));
+  }
+}
+window.openPublicProfile = openPublicProfile;
+
+/* === MATCHES LIST === */
+function _renderMatchesInto(tbody, matches) {
+  tbody.innerHTML = '';
+  if (!matches || !matches.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="games-empty">Нет завершённых матчей</td></tr>';
+    return;
+  }
+  for (const match of matches) {
+    const tr = document.createElement('tr');
+    const d = new Date(match.date * 1000);
+    const dateStr = d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const resText = match.is_winner
+      ? '<span style="color:#55ff55; font-weight:bold;">🏆 Победа</span>'
+      : '<span style="color:#8b8b9b;">Поражение</span>';
+    tr.innerHTML = `
+      <td style="font-size:11px; color:#8b8b9b;">${dateStr}</td>
+      <td><span class="size-badge">${match.size}</span></td>
+      <td style="color:#9eb8ff; font-weight:bold;">${match.my_cells}</td>
+      <td>${resText}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function loadMyMatches() {
+  const tbody = $('prof-history-body');
+  tbody.innerHTML = '<tr><td colspan="4" class="games-empty">Загрузка...</td></tr>';
+  try {
+    const data = await api('/api/my_matches');
+    _renderMatchesInto(tbody, data.matches);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="games-empty" style="color:#ff6666;">Ошибка: ${escape(e.message)}</td></tr>`;
+  }
+}
+
+async function loadUserMatches(userId) {
+  const tbody = $('prof-history-body');
+  tbody.innerHTML = '<tr><td colspan="4" class="games-empty">Загрузка...</td></tr>';
+  try {
+    const data = await api('/api/user_matches/' + userId);
+    _renderMatchesInto(tbody, data.matches);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="games-empty" style="color:#ff6666;">Ошибка: ${escape(e.message)}</td></tr>`;
+  }
+}
+window.loadUserMatches = loadUserMatches;
+
+/* === CHANGE PASSWORD === */
+async function changePassword() {
+  const oldPass = $('prof-old-pass').value;
+  const newPass = $('prof-new-pass').value;
+  const newPass2 = $('prof-new-pass2').value;
+  $('prof-pass-err').textContent = '';
+  $('prof-pass-err').style.color = '';
+
+  if (!newPass) { $('prof-pass-err').textContent = 'Введите новый пароль'; return; }
+  if (newPass !== newPass2) { $('prof-pass-err').textContent = 'Пароли не совпадают'; return; }
+  if (newPass.length < 4) { $('prof-pass-err').textContent = 'Пароль должен быть не менее 4 символов'; return; }
+
+  try {
+    await api('/api/change_password', {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPass, new_password: newPass }),
+    });
+    state.me = await api('/api/me');
+    $('prof-pass-err').style.color = '#55ff55';
+    $('prof-pass-err').textContent = '✓ Пароль обновлён';
+    $('password-status').textContent = '✓ Пароль установлен. Можно изменить ниже.';
+    $('prof-old-pass').value = '';
+    $('prof-new-pass').value = '';
+    $('prof-new-pass2').value = '';
+    $('prof-old-pass').style.display = 'block';
+    setTimeout(() => {
+      $('prof-pass-err').style.color = '';
+      $('prof-pass-err').textContent = '';
+    }, 3000);
+  } catch (e) {
+    $('prof-pass-err').textContent = e.message;
+  }
+}
+window.changePassword = changePassword;
+
+async function unlinkYandex() {
+  customConfirm(
+    'Отвязать Яндекс?',
+    'Вы больше не сможете входить через Яндекс. Вход останется по логину и паролю.',
+    async () => {
+      try {
+        await api('/api/unlink_yandex', { method: 'POST' });
+        state.me = await api('/api/me');
+        openProfileModal(); // перерисовать профиль с обновлёнными данными
+      } catch (e) {
+        showModal('Ошибка', escape(e.message));
+      }
+    }
+  );
+}
+window.unlinkYandex = unlinkYandex;
+
+function logoutFromProfile() {
+  customConfirm('Выйти?', 'Вы выйдете из аккаунта.', () => {
+    closeProfileModal();
+    doLogout();
+  });
+}
+window.logoutFromProfile = logoutFromProfile;
+
+/* === GAMES SCREEN === */
 async function showGamesScreen() {
   showScreen('games-screen');
   await refreshGames();
@@ -178,7 +421,8 @@ function updateCreateButton(activeGames) {
   const wrapper = $('create-btn-wrapper');
   const mine = myActiveGame(activeGames);
   if (mine) {
-    btn.disabled = true; btn.textContent = '⚠ У вас есть активная игра'; wrapper.title = 'У вас может быть только 1 активная игра';
+    btn.disabled = true; btn.textContent = '⚠ У вас есть активная игра';
+    wrapper.title = 'У вас может быть только 1 активная игра';
   } else {
     btn.disabled = false; btn.textContent = '+ Создать игру'; wrapper.title = '';
   }
@@ -209,7 +453,6 @@ function renderActiveGames(games) {
       : g.status === 'playing' ? '<span class="status-badge status-playing">В игре</span>'
       : g.status === 'ending' ? '<span class="status-badge status-ending">Заверш.</span>'
       : `<span class="status-badge status-finished">${g.status}</span>`;
-
     const isMyGame = myCurrentGame && g.game_id === myCurrentGame.game_id;
     const freeSlots = g.max_players - g.players_count;
     let action = '';
@@ -221,11 +464,9 @@ function renderActiveGames(games) {
     } else if (!myCurrentGame && (g.status === 'waiting' || (g.status === 'playing' && freeSlots > 0))) {
       action = `<button class="ghost" style="padding:5px 10px;font-size:12px;" onclick="joinGame('${g.game_id}')">Присоединиться</button>`;
     }
-
     const pct = typeof g.occupied_pct === 'number' ? g.occupied_pct : 0;
     let nameHtml = g.name ? `<span class="game-name">${escape(g.name)}</span>` : '';
     let feeHtml = g.entry_fee > 0 ? `<span class="game-fee">${ICONS.dts(20)} Взнос: ${g.entry_fee} / Банк: ${g.prize_pool || 0}</span>` : '';
-
     tr.innerHTML = `
       <td><span class="size-badge">${g.size_code}</span>${nameHtml}${feeHtml}</td>
       <td>${g.players_count}/${g.max_players}</td>
@@ -240,9 +481,7 @@ function renderHistoryGames(games) {
   const tbody = $('history-games-body');
   if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" class="games-empty">Нет завершённых игр</td></tr>'; return; }
   tbody.innerHTML = '';
-
   const displayGames = games.slice(0, 15);
-
   for (const g of displayGames) {
     const tr = document.createElement('tr');
     let date = '—';
@@ -263,15 +502,10 @@ function renderHistoryGames(games) {
 async function joinGame(gameId) {
   try {
     await api(`/api/games/${gameId}/join`, { method: 'POST' });
-
-    // Принудительно обновляем баланс
     state.me = await api('/api/me');
     renderProfile();
-
-    // Сбрасываем статусы
     state.disconnected = {};
     state.iClickedThisTurn = false;
-
     if (state.ws) { state.ws.close(); state.ws = null; }
     connectWS();
   } catch (e) { showModal('Ошибка', escape(e.message)); }
@@ -290,6 +524,7 @@ async function returnToGame() {
 }
 window.returnToGame = returnToGame;
 
+/* === SURROUND BUTTONS === */
 $('btn-help').onclick = () => $('help-modal').classList.add('show');
 $('help-close').onclick = () => $('help-modal').classList.remove('show');
 
@@ -312,6 +547,7 @@ function updateSoundBtn() {
 }
 $('btn-sound').onclick = () => { state.muted = !state.muted; localStorage.setItem('dots_muted', state.muted ? '1' : '0'); updateSoundBtn(); };
 
+/* === CREATE MODAL === */
 let selectedSize = 'M';
 document.querySelectorAll('.size-option').forEach(opt => {
   opt.addEventListener('click', (e) => {
@@ -329,20 +565,12 @@ $('fee-toggle').onchange = (e) => {
   $('fee-container').style.display = e.target.checked ? 'block' : 'none';
   if (e.target.checked) {
     const maxFee = Math.floor((state.me?.global_dts || 0) * 0.5);
-    const range = $('fee-range');
-    range.min = 1;
-    range.max = Math.max(1, maxFee);
-    range.value = Math.min(maxFee, 10);
+    const range = $('fee-range'); range.min = 1; range.max = Math.max(1, maxFee); range.value = Math.min(maxFee, 10);
     $('fee-value').textContent = range.value;
   }
 };
-
-$('fee-range').addEventListener('input', (e) => {
-  $('fee-value').textContent = e.target.value;
-});
-$('fee-range').addEventListener('change', (e) => {
-  $('fee-value').textContent = e.target.value;
-});
+$('fee-range').addEventListener('input', (e) => { $('fee-value').textContent = e.target.value; });
+$('fee-range').addEventListener('change', (e) => { $('fee-value').textContent = e.target.value; });
 
 $('btn-create-game').onclick = () => {
   $('create-err').textContent = ''; $('ai-toggle').checked = false; $('fee-toggle').checked = false; $('fee-container').style.display = 'none'; $('game-name-input').value = '';
@@ -362,7 +590,7 @@ $('btn-confirm-create').onclick = async () => {
   } catch (e) { $('create-err').textContent = e.message; }
 };
 
-/* TOURNAMENTS */
+/* === TOURNAMENTS === */
 async function refreshTournaments() {
   try {
     const list = await api('/api/tournaments');
@@ -371,16 +599,13 @@ async function refreshTournaments() {
     list.forEach(t => {
       const row = document.createElement('div');
       row.className = 'tourn-item';
-      const badge = t.status === 'registration'
-        ? `<span class="badge open">открыт</span>` : `<span class="badge run">идёт</span>`;
-      const btn = t.status === 'registration'
-        ? `<button class="ghost" onclick="joinTournament(${t.id})">Войти</button>` : '';
+      const badge = t.status === 'registration' ? `<span class="badge open">открыт</span>` : `<span class="badge run">идёт</span>`;
+      const btn = t.status === 'registration' ? `<button class="ghost" onclick="joinTournament(${t.id})">Войти</button>` : '';
       row.innerHTML = `<span>Турнир #${t.id} · ${t.cnt}/4</span>${badge}${btn}`;
       el.appendChild(row);
     });
   } catch (e) { console.error(e); }
 }
-
 async function joinTournament(id) {
   try {
     await api(`/api/tournaments/${id}/join`, { method: 'POST' });
@@ -415,15 +640,14 @@ async function showTournamentDetail(id) {
       html += `<div style="font-size:13px;color:#8b8b9b;margin-top:8px;">${name}</div>`;
       for (const m of byRound[rnd]) {
         const w = m.winner_name ? ` → 🏆 ${escape(m.winner_name)}` : '';
-        html += `<div style="font-size:13px;padding:4px 0;">
-          ${escape(m.p1_name || '?')} vs ${escape(m.p2_name || '?')}${w}</div>`;
+        html += `<div style="font-size:13px;padding:4px 0;">${escape(m.p1_name || '?')} vs ${escape(m.p2_name || '?')}${w}</div>`;
       }
     }
     el.innerHTML = html;
   } catch (e) { console.error(e); }
 }
 
-/* WS */
+/* === WS === */
 function setReconnectOverlay(show) { $('reconnect-overlay').classList.toggle('show', show); }
 function connectWS() {
   if (state.ws && (state.ws.readyState === WebSocket.OPEN || state.ws.readyState === WebSocket.CONNECTING)) return;
@@ -432,7 +656,6 @@ function connectWS() {
   state.ws = ws;
   state.reconnectPending = false;
   let messageQueue = Promise.resolve();
-
   ws.onopen = () => {
     state.reconnectAttempts = 0; state.reconnectPending = false; setReconnectOverlay(false);
     ws.send(JSON.stringify({ type: 'join' }));
@@ -441,7 +664,7 @@ function connectWS() {
     try {
       const msg = JSON.parse(e.data);
       messageQueue = messageQueue.then(() => handleMessage(msg)).catch(err => console.error(err));
-    } catch (err) { console.error("Failed to parse WS message", err); }
+    } catch (err) { console.error("WS parse error", err); }
   };
   ws.onclose = () => {
     if (state.gameOver) return;
@@ -484,18 +707,12 @@ async function handleMessage(msg) {
       log(`⚠ ${msg.message}`);
       break;
     case 'player_joined':
-      state.players = msg.players;
-      renderAll();
-      // Обновляем визуальное отображение призового фонда, если оно изменилось
+      state.players = msg.players; renderAll();
       if (msg.prize_pool !== undefined) {
           const prizeEl = $('field-prize');
           const prizeVal = $('prize-val');
-          if (msg.prize_pool > 0) {
-              prizeEl.style.display = 'flex';
-              prizeVal.innerHTML = `${ICONS.dts(28)} ${msg.prize_pool}`;
-          } else {
-              prizeEl.style.display = 'none';
-          }
+          if (msg.prize_pool > 0) { prizeEl.style.display = 'flex'; prizeVal.innerHTML = `${ICONS.dts(28)} ${msg.prize_pool}`; }
+          else { prizeEl.style.display = 'none'; }
       }
       showFieldMessage(`${msg.player_name || 'Игрок'} присоединился`, 'info');
       log(`${msg.player_name || 'Игрок'} присоединился`);
@@ -515,33 +732,21 @@ async function handleMessage(msg) {
     case 'turn_end':
       playSound('turn_end');
       state.turn = msg.turn;
-      if (msg.time_left !== undefined) {
-        state.turnEndsAt = Date.now() + msg.time_left * 1000;
-      } else {
-        state.turnEndsAt = Date.now() + Math.max(0, Math.min(60, msg.turn_ends_at - Date.now() / 1000)) * 1000;
-      }
-      state.warned10Sec = false;
-      state.iClickedThisTurn = false;
-
+      if (msg.time_left !== undefined) state.turnEndsAt = Date.now() + msg.time_left * 1000;
+      else state.turnEndsAt = Date.now() + Math.max(0, Math.min(60, msg.turn_ends_at - Date.now() / 1000)) * 1000;
+      state.warned10Sec = false; state.iClickedThisTurn = false;
       if (msg.players) state.players = msg.players;
       for (const c of state.grid.values()) c.acted = false;
       for (const [key, c] of state.grid) updateSprite(key, c);
       if (state.selected) updateTargets();
-      redrawMasses();
-      log(`— Тур ${msg.turn} —`);
-      renderAll();
+      redrawMasses(); log(`— Тур ${msg.turn} —`); renderAll();
       if (msg.turn > 0 && msg.turn % 20 === 0 && state.lastAdTurn !== msg.turn) {
         state.lastAdTurn = msg.turn; $('ad-modal').classList.add('show');
       }
       break;
     case 'player_disconnected': {
-      // Не показываем сообщение, если игрок сдался
       const p = state.players[msg.player_id];
-      if (p && p.surrendered) {
-          if (msg.players) state.players = msg.players;
-          renderAll();
-          break;
-      }
+      if (p && p.surrendered) { if (msg.players) state.players = msg.players; renderAll(); break; }
       state.disconnected[msg.player_id] = Date.now();
       if (msg.players) state.players = msg.players;
       renderAll();
@@ -550,13 +755,8 @@ async function handleMessage(msg) {
       break;
     }
     case 'player_reconnected': {
-      // Не показываем сообщение, если игрок сдался
       const p = state.players[msg.player_id];
-      if (p && p.surrendered) {
-          if (msg.players) state.players = msg.players;
-          renderAll();
-          break;
-      }
+      if (p && p.surrendered) { if (msg.players) state.players = msg.players; renderAll(); break; }
       delete state.disconnected[msg.player_id];
       if (msg.players) state.players = msg.players;
       renderAll();
@@ -570,11 +770,8 @@ async function handleMessage(msg) {
       renderAll();
       break;
     case 'game_over': {
-      state.gameOver = true;
-      state.turnEndsAt = 0;
-      const timerEl = $('field-timer');
-      if (timerEl) timerEl.textContent = '0:00';
-
+      state.gameOver = true; state.turnEndsAt = 0;
+      const timerEl = $('field-timer'); if (timerEl) timerEl.textContent = '0:00';
       const w = state.players[msg.winner];
       const myId = state.players[state.playerId]?.user_id;
       const iWon = w && state.players[state.playerId] && w.user_id === state.players[state.playerId].user_id;
@@ -584,20 +781,19 @@ async function handleMessage(msg) {
       if (msg.dts && myId && msg.dts[myId]) {
         const d = msg.dts[myId];
         if (iWon) body = `🏆 Вы победили!<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${ICONS.dts(24)} в глобальный баланс.`;
-        else if (w) body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${ICONS.dts(24)} в глобальный баланс.`;
+        else if (w) body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${ICONS.dts(24)}.`;
         else body = `Игра окончена вничью.<br><br>Причина: ${reasonText}.<br><br>Вы получаете <b>+${d.earned}</b> ${ICONS.dts(24)}.`;
       } else {
-          if (iWon) body = `🏆 Вы победили!<br><br>Причина: ${reasonText}.`;
-          else if (w) body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.`;
-          else body = `Игра окончена вничью.<br><br>Причина: ${reasonText}.`;
+        if (iWon) body = `🏆 Вы победили!<br><br>Причина: ${reasonText}.`;
+        else if (w) body = `Игру выиграл <b>${escape(w.name)}</b>.<br><br>Причина: ${reasonText}.`;
+        else body = `Игра окончена вничью.<br><br>Причина: ${reasonText}.`;
       }
       showModal(w ? `🏆 ${w.name} побеждает!` : 'Игра окончена', body);
       setReconnectOverlay(false); renderAll();
       break;
     }
     case 'error':
-      playSound('error');
-      log(`⚠ ${msg.message}`);
+      playSound('error'); log(`⚠ ${msg.message}`);
       if (msg.message === 'Не твоя точка') {
         state.selected = null; clearTargets();
         if (state.ws && state.ws.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify({ type: 'join' }));
@@ -623,7 +819,6 @@ function renderLobby(players, gameInfo) {
     row.innerHTML = `<div class="player-dot" style="background:${p.color}"></div><div class="player-name">${escape(p.name)} ${aiBadge}</div>`;
     el.appendChild(row);
   }
-
   const count = Object.keys(players).length;
   const wrapper = $('lobby-btn-wrapper');
   const hint = $('lobby-hint');
@@ -693,13 +888,9 @@ function renderPlayers() {
     const isDc = !!state.disconnected[p.id] || p.disconnected;
     const row = document.createElement('div');
     row.className = 'player-row' + (isDc ? ' dc' : '') + (p.surrendered ? ' surr' : '');
-
     const typeIcon = p.is_ai ? ICONS.ai(16) : ICONS.player(16);
     const surrBadge = p.surrendered ? `<span class="surr-badge">${ICONS.flag(12)}</span>` : '';
-
     let statusBadge = '';
-
-    // Если сдался - никаких статусов отошел/отсутствует
     if (!p.surrendered) {
         if (p.absent) {
             statusBadge = `<span class="absent-badge" style="background: #4a1a1a; color: #ff8888;">${ICONS.stop(12)} отсутствует</span>`;
@@ -709,7 +900,6 @@ function renderPlayers() {
             }
         }
     }
-
     row.innerHTML = `
       <div class="player-dot" style="background:${p.color}"></div>
       <div class="player-name">${escape(p.name)}${you} ${typeIcon} ${surrBadge}${statusBadge}</div>
@@ -725,14 +915,12 @@ function renderActions() {
   const dts = me?.dts || 0;
   const surrenderBtn = $('btn-surrender');
   if (surrenderBtn) surrenderBtn.disabled = !me || me.surrendered || state.gameOver;
-
   updateSelectedInfo();
   const actions = $('actions'); actions.innerHTML = '';
   if (state.gameOver || !state.selected || (me && me.surrendered)) return;
   const [x, y] = state.selected;
   const cell = state.grid.get(`${x},${y}`);
   if (!cell || cell.owner !== state.playerId || movesLeft <= 0 || cell.acted) return;
-
   const canAfford = dts >= POWERUP_COST;
   const b = document.createElement('button');
   b.className = 'action-btn';
@@ -762,16 +950,13 @@ function handleCellClick(x, y) {
   }
   const cell = state.grid.get(`${x},${y}`);
   const movesLeft = computeMovesLeft();
-
   if (cell && cell.owner === state.playerId) {
     if (cell.acted || movesLeft <= 0) { state.selected = null; clearTargets(); renderAll(); return; }
-
     if (!state.iClickedThisTurn) {
         state.iClickedThisTurn = true;
         if (me.missed_turns > 0) me.missed_turns = 0;
         renderPlayers();
     }
-
     playSound('select'); state.selected = [x, y]; updateTargets(); renderAll(); return;
   }
   state.selected = null; clearTargets(); renderAll();

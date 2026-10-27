@@ -356,3 +356,23 @@ input[type=range]::-webkit-slider-runnable-track {
     overflow-y: auto; /* Добавлено для мобилок */
   }
 }
+/* === ПРОФИЛЬ === */
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+  #profile-modal .modal {
+    padding: 12px !important;
+  }
+  #profile-modal > .modal > div:nth-child(1) {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* Иконка аватара */
+img + .lb-name,
+.lb-name img {
+  flex-shrink: 0;
+}

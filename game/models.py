@@ -3,8 +3,10 @@ from django.db import models
 
 class User(models.Model):
     username = models.CharField(max_length=20, unique=True)
-    password_hash = models.BinaryField()
-    salt = models.BinaryField()
+    password_hash = models.BinaryField(null=True, blank=True)
+    salt = models.BinaryField(null=True, blank=True)
+    yandex_id = models.CharField(max_length=64, unique=True, null=True, blank=True)  # <-- НОВОЕ
+    avatar_url = models.URLField(max_length=500, null=True, blank=True)  # <-- НОВОЕ
     elo = models.IntegerField(default=1000)
     global_dts = models.IntegerField(default=0)
     games_played = models.IntegerField(default=0)
