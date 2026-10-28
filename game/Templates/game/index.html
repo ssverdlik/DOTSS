@@ -181,13 +181,27 @@
       <label class="size-option" data-size="XL"><input type="radio" name="size" value="XL"><span class="size-name">XL</span><span class="size-info">100×100 · до 20 игроков</span></label>
     </div>
     <label class="ai-checkbox" style="margin-top: 10px;"><input type="checkbox" id="ai-toggle"><div><div class="ai-label" id="ai-label-icon">Разрешить ИИ-игрока</div><div class="ai-desc">Позволит начать игру со вторым игроком-ботом</div></div></label>
-    <label class="ai-checkbox" style="margin-top: 10px;"><input type="checkbox" id="fee-toggle"><div><div class="ai-label" id="fee-label-icon">Игра с призовым фондом</div><div class="ai-desc">Выберите ставку (не более 50% от баланса)</div></div></label>
+
+    <label class="ai-checkbox" id="fee-toggle-wrapper" style="margin-top: 10px;">
+      <input type="checkbox" id="fee-toggle">
+      <div>
+        <div class="ai-label" id="fee-label-icon">Игра с призовым фондом</div>
+        <div class="ai-desc">Выберите ставку (max = 50% Баланса DTs)</div>
+      </div>
+    </label>
     <div id="fee-container" style="display:none; margin-top: 8px;">
       <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px; align-items:center;">
-        <span>Ставка:</span><span style="display:flex; align-items:center; gap:4px;"><b id="fee-value">0</b> <span id="fee-icon"></span></span>
+        <span>Ставка:</span>
+        <span style="display:flex; align-items:center; gap:4px;">
+          <b id="fee-value">1</b> <span id="fee-icon"></span>
+        </span>
       </div>
       <input type="range" id="fee-range" min="1" max="100" value="1">
+      <div style="font-size:11px; color:#8b8b9b; text-align:right; margin-top:2px;">
+        Максимум: <span id="fee-max-val">1</span> DTs
+      </div>
     </div>
+
     <div class="err" id="create-err"></div>
     <button class="primary" id="btn-confirm-create" style="margin-top:14px;">Создать</button>
     <button class="ghost" id="btn-cancel-create" style="width:100%;margin-top:8px;">Отмена</button>

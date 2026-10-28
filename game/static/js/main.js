@@ -228,7 +228,6 @@ async function openProfileModal() {
   $('prof-new-pass2').value = '';
 
   // Блок привязки Яндекса
-  // Блок привязки Яндекса
   const hasYandex = !!m.yandex_linked;
   $('yandex-link-status').textContent = hasYandex
     ? '✓ Яндекс привязан. Вы можете входить через Яндекс на экране авторизации.'
@@ -236,7 +235,6 @@ async function openProfileModal() {
   $('btn-yandex-link').style.display = hasYandex ? 'none' : 'inline-flex';
   $('btn-yandex-unlink').style.display = hasYandex ? 'block' : 'none';
 
-  // ⬇️ НОВАЯ СТРОКА: подставляем токен в URL ссылки
   if (state.token) {
     $('btn-yandex-link').href = `/api/auth/yandex?link=1&token=${encodeURIComponent(state.token)}`;
   }
@@ -462,7 +460,12 @@ function renderActiveGames(games) {
         ${g.players_count === 1 ? `<span style="cursor:pointer; display:flex;" onclick="deleteGame('${g.game_id}')" title="Удалить игру">${ICONS.cross(18)}</span>` : ''}
       </div>`;
     } else if (!myCurrentGame && (g.status === 'waiting' || (g.status === 'playing' && freeSlots > 0))) {
-      action = `<button class="ghost" style="padding:5px 10px;font-size:12px;" onclick="joinGame('${g.game_id}')">Присоединиться</button>`;
+      const myDts = state.me?.global_dts || 0;
+      if (g.entry_fee > myDts) {
+        action = `<button class="ghost" style="padding:5px 10px;font-size:12px; opacity:0.4; cursor:not-allowed;" disabled title="Не хватает DTs">Присоединиться</button>`;
+      } else {
+        action = `<button class="ghost" style="padding:5px 10px;font-size:12px;" onclick="joinGame('${g.game_id}')">Присоединиться</button>`;
+      }
     }
     const pct = typeof g.occupied_pct === 'number' ? g.occupied_pct : 0;
     let nameHtml = g.name ? `<span class="game-name">${escape(g.name)}</span>` : '';
@@ -565,15 +568,33 @@ $('fee-toggle').onchange = (e) => {
   $('fee-container').style.display = e.target.checked ? 'block' : 'none';
   if (e.target.checked) {
     const maxFee = Math.floor((state.me?.global_dts || 0) * 0.5);
-    const range = $('fee-range'); range.min = 1; range.max = Math.max(1, maxFee); range.value = Math.min(maxFee, 10);
+    const range = $('fee-range');
+    range.min = 1;
+    range.max = Math.max(1, maxFee);
+    range.value = 1;
     $('fee-value').textContent = range.value;
+    $('fee-max-val').textContent = range.max;
   }
 };
 $('fee-range').addEventListener('input', (e) => { $('fee-value').textContent = e.target.value; });
 $('fee-range').addEventListener('change', (e) => { $('fee-value').textContent = e.target.value; });
 
 $('btn-create-game').onclick = () => {
-  $('create-err').textContent = ''; $('ai-toggle').checked = false; $('fee-toggle').checked = false; $('fee-container').style.display = 'none'; $('game-name-input').value = '';
+  $('create-err').textContent = '';
+  $('ai-toggle').checked = false;
+  $('fee-toggle').checked = false;
+  $('fee-container').style.display = 'none';
+  $('game-name-input').value = '';
+
+  const dts = state.me?.global_dts || 0;
+
+  // Показываем возможность игры с призовым фондом только если баланс от 5 DTs
+  if (dts >= 5) {
+    $('fee-toggle-wrapper').style.display = 'flex';
+  } else {
+    $('fee-toggle-wrapper').style.display = 'none';
+  }
+
   $('create-modal').classList.add('show');
 };
 $('btn-cancel-create').onclick = () => $('create-modal').classList.remove('show');

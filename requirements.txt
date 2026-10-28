@@ -5,3 +5,5 @@ daphne>=4.0
 # // psycopg2-binary>=2.9 //      # если используете PostgreSQL
 redis>=4.5                 # клиент для channels-redis
 requests>=2.28
+python-decouple>=3.8
+

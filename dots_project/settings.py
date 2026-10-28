@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,14 +21,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-njpo%@(q(@3ff^%2og@1q$yd#s#*+$4zfvka-&wqi(e+)-8m*6'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+YANDEX_CLIENT_ID = config('YANDEX_CLIENT_ID')
+YANDEX_CLIENT_SECRET = config('YANDEX_CLIENT_SECRET')
+YANDEX_REDIRECT_URI = config('YANDEX_REDIRECT_URI')
 
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -157,7 +158,3 @@ MAILERS = {
     },
 }
 
-YANDEX_CLIENT_ID = '9bce6ff742c54d18ae81d46223317ed6'
-YANDEX_CLIENT_SECRET = '4192158b69814be8b78f9399ebf034d2'
-YANDEX_REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/yandex/callback'  # для локалки
-# Для прода: 'https://ваш-домен.ru/api/auth/yandex/callback'
